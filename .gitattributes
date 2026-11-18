@@ -1,0 +1,25 @@
+# 统一换行与二进制识别，避免 Windows 组员之间互相制造"整文件 diff"。
+* text=auto eol=lf
+
+# Windows 批处理必须 CRLF，否则可能不执行。
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 源码与文档统一 LF。
+*.java text eol=lf
+*.sql  text eol=lf
+*.md   text eol=lf
+*.js   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.yml  text eol=lf
+*.json text eol=lf
+*.svg  text eol=lf
+
+# 二进制文件不做换行转换，也不参与文本 diff。
+*.jar  binary
+*.db   binary
+*.png  binary
+*.jpg  binary
+*.docx binary
+*.pdf  binary
