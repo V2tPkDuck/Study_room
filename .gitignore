@@ -1,0 +1,28 @@
+# ---- 构建产物 ----
+# app/study-room.jar 是 mvn package 的产物，用交付 zip / Release 分发，不入库。
+# 若老师要求"克隆即可运行"，用 git add -f app/study-room.jar 例外提交，并在 PR 里说明。
+server/target/
+target/
+*.class
+app/*.jar
+
+# ---- 运行期数据（首次启动自动生成）----
+data/
+*.mv.db
+*.trace.db
+
+# ---- IDE 与工具 ----
+.idea/
+*.iml
+.vscode/
+.tools/
+.m2repo/
+
+# ---- 日志与系统临时文件 ----
+*.log
+.DS_Store
+Thumbs.db
+~$*
+
+# ---- 交付压缩包 ----
+*.zip

@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: study-room
+  datasource:
+    url: jdbc:h2:file:./data/studyroom-demo;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ${H2_PASSWORD:}
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 10000
+  web:
+    resources:
+      cache:
+        period: 0
+        cachecontrol:
+          no-cache: true
+          no-store: true
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      timeout: 2h
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: false
+  error:
+    include-message: never
+app:
+  zone: Asia/Shanghai
+  seed: ${APP_SEED:true}
+  admin-password: ${ADMIN_PASSWORD:Admin123!}
+  student-password: ${STUDENT_PASSWORD:Student123!}
+  # 30 秒巡检仅用于课堂演示；报告 5.3.2 的 22:00 是待确认规则。
+  sweep-delay-ms: 30000
+  scheduling-enabled: true
+logging:
+  level:
+    studyroom: INFO
