@@ -1,0 +1,12 @@
+{
+  "status" : 200,
+  "body" : [ {
+    "id" : 2,
+    "username" : "alice",
+    "display_name" : "Alice",
+    "role" : "STUDENT",
+    "enabled" : true,
+    "blacklist_until" : null,
+    "created_at" : "2026-10-29T09:00:00"
+  } ]
+}

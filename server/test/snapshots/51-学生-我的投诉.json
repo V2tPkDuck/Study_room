@@ -1,0 +1,17 @@
+{
+  "status" : 200,
+  "body" : [ {
+    "id" : 1,
+    "user_id" : 2,
+    "reservation_id" : 1,
+    "topic" : "座位问题",
+    "content" : "桌面有灰",
+    "status" : "PENDING",
+    "reply" : "",
+    "replied_by" : null,
+    "created_at" : "2026-10-29T11:20:00",
+    "updated_at" : "2026-10-29T11:20:00",
+    "username" : "alice",
+    "display_name" : "Alice"
+  } ]
+}

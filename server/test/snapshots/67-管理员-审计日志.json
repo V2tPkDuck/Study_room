@@ -1,0 +1,156 @@
+{
+  "status" : 200,
+  "body" : [ {
+    "id" : 19,
+    "actor" : "admin",
+    "action" : "SAVE_SEAT",
+    "target_type" : "SEAT",
+    "target_id" : 5,
+    "detail" : "05",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 18,
+    "actor" : "admin",
+    "action" : "SAVE_ROOM",
+    "target_type" : "ROOM",
+    "target_id" : 2,
+    "detail" : "第二阅览室",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 17,
+    "actor" : "admin",
+    "action" : "MODERATE_REVIEW",
+    "target_type" : "REVIEW",
+    "target_id" : 1,
+    "detail" : "可见：false",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 16,
+    "actor" : "admin",
+    "action" : "REPLY_COMPLAINT",
+    "target_type" : "COMPLAINT",
+    "target_id" : 1,
+    "detail" : "状态：RESOLVED",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 15,
+    "actor" : "alice",
+    "action" : "COMPLAINT",
+    "target_type" : "COMPLAINT",
+    "target_id" : 1,
+    "detail" : "座位问题",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 14,
+    "actor" : "alice",
+    "action" : "BOOK",
+    "target_type" : "RESERVATION",
+    "target_id" : 4,
+    "detail" : "创建预约：2026-10-29T15:00 ~ 2026-10-29T16:00",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 13,
+    "actor" : "admin",
+    "action" : "RELEASE_BLACKLIST",
+    "target_type" : "BLACKLIST",
+    "target_id" : 2,
+    "detail" : "申诉通过",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 12,
+    "actor" : "admin",
+    "action" : "MANUAL_VIOLATION",
+    "target_type" : "RESERVATION",
+    "target_id" : 3,
+    "detail" : "现场违规",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 11,
+    "actor" : "SYSTEM",
+    "action" : "BLACKLIST",
+    "target_type" : "BLACKLIST",
+    "target_id" : 1,
+    "detail" : "有效违约达到 2 次",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 10,
+    "actor" : "admin",
+    "action" : "VIOLATION",
+    "target_type" : "VIOLATION",
+    "target_id" : 2,
+    "detail" : "现场违规",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 9,
+    "actor" : "alice",
+    "action" : "BOOK",
+    "target_type" : "RESERVATION",
+    "target_id" : 3,
+    "detail" : "创建预约：2026-10-29T13:00 ~ 2026-10-29T14:00",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 8,
+    "actor" : "admin",
+    "action" : "CONFIRM_NO_CHECK_IN",
+    "target_type" : "RESERVATION",
+    "target_id" : 2,
+    "detail" : "超时未签到",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 7,
+    "actor" : "admin",
+    "action" : "VIOLATION",
+    "target_type" : "VIOLATION",
+    "target_id" : 1,
+    "detail" : "超时未签到",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 6,
+    "actor" : "SYSTEM",
+    "action" : "PENDING_NO_CHECK_IN",
+    "target_type" : "RESERVATION",
+    "target_id" : 2,
+    "detail" : "超时未签到，转待核查",
+    "created_at" : "2026-10-29T11:20:00"
+  }, {
+    "id" : 5,
+    "actor" : "alice",
+    "action" : "BOOK",
+    "target_type" : "RESERVATION",
+    "target_id" : 2,
+    "detail" : "创建预约：2026-10-29T11:00 ~ 2026-10-29T12:00",
+    "created_at" : "2026-10-29T09:50:00"
+  }, {
+    "id" : 4,
+    "actor" : "alice",
+    "action" : "REVIEW",
+    "target_type" : "REVIEW",
+    "target_id" : 1,
+    "detail" : "提交评价",
+    "created_at" : "2026-10-29T09:50:00"
+  }, {
+    "id" : 3,
+    "actor" : "alice",
+    "action" : "CHECK-OUT",
+    "target_type" : "RESERVATION",
+    "target_id" : 1,
+    "detail" : "状态从 CHECKED_IN 流转",
+    "created_at" : "2026-10-29T09:50:00"
+  }, {
+    "id" : 2,
+    "actor" : "alice",
+    "action" : "CHECK-IN",
+    "target_type" : "RESERVATION",
+    "target_id" : 1,
+    "detail" : "状态从 BOOKED 流转",
+    "created_at" : "2026-10-29T09:50:00"
+  }, {
+    "id" : 1,
+    "actor" : "alice",
+    "action" : "BOOK",
+    "target_type" : "RESERVATION",
+    "target_id" : 1,
+    "detail" : "创建预约：2026-10-29T10:00 ~ 2026-10-29T11:00",
+    "created_at" : "2026-10-29T09:00:00"
+  } ]
+}
