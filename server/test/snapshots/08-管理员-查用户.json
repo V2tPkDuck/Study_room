@@ -1,0 +1,28 @@
+{
+  "status" : 200,
+  "body" : [ {
+    "id" : 4,
+    "username" : "admin",
+    "display_name" : "Admin",
+    "role" : "ADMIN",
+    "enabled" : true,
+    "blacklist_until" : null,
+    "created_at" : "2026-10-29T09:00:00"
+  }, {
+    "id" : 3,
+    "username" : "bobby",
+    "display_name" : "Bobby",
+    "role" : "STUDENT",
+    "enabled" : true,
+    "blacklist_until" : null,
+    "created_at" : "2026-10-29T09:00:00"
+  }, {
+    "id" : 2,
+    "username" : "alice",
+    "display_name" : "Alice",
+    "role" : "STUDENT",
+    "enabled" : true,
+    "blacklist_until" : null,
+    "created_at" : "2026-10-29T09:00:00"
+  } ]
+}

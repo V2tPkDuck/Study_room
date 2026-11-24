@@ -1,0 +1,52 @@
+{
+  "status" : 200,
+  "body" : [ {
+    "id" : 1,
+    "room_id" : 1,
+    "code" : "01",
+    "has_power" : true,
+    "enabled" : true,
+    "room_quiet" : false,
+    "conflicts" : 1,
+    "occupied" : 0,
+    "state" : "已预约",
+    "bookable" : false,
+    "is_quiet" : false
+  }, {
+    "id" : 2,
+    "room_id" : 1,
+    "code" : "02",
+    "has_power" : true,
+    "enabled" : true,
+    "room_quiet" : false,
+    "conflicts" : 0,
+    "occupied" : 0,
+    "state" : "空闲",
+    "bookable" : true,
+    "is_quiet" : false
+  }, {
+    "id" : 3,
+    "room_id" : 1,
+    "code" : "03",
+    "has_power" : true,
+    "enabled" : true,
+    "room_quiet" : false,
+    "conflicts" : 0,
+    "occupied" : 0,
+    "state" : "空闲",
+    "bookable" : true,
+    "is_quiet" : false
+  }, {
+    "id" : 4,
+    "room_id" : 1,
+    "code" : "04",
+    "has_power" : true,
+    "enabled" : true,
+    "room_quiet" : false,
+    "conflicts" : 0,
+    "occupied" : 0,
+    "state" : "空闲",
+    "bookable" : true,
+    "is_quiet" : false
+  } ]
+}

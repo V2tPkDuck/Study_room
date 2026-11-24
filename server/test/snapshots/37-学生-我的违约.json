@@ -1,0 +1,16 @@
+{
+  "status" : 200,
+  "body" : [ {
+    "id" : 1,
+    "user_id" : 2,
+    "reservation_id" : 2,
+    "source" : "AUTO",
+    "reason" : "超时未签到",
+    "revoked" : false,
+    "revoke_reason" : null,
+    "created_by" : "admin",
+    "created_at" : "2026-10-29T11:20:00",
+    "username" : "alice",
+    "display_name" : "Alice"
+  } ]
+}

@@ -1,0 +1,15 @@
+{
+  "status" : 200,
+  "body" : [ {
+    "id" : 1,
+    "name" : "测试阅览室",
+    "building" : "图书馆",
+    "floor_no" : 2,
+    "open_time" : "07:00",
+    "close_time" : "23:00",
+    "description" : "快照测试用",
+    "enabled" : true,
+    "is_quiet" : false,
+    "seat_count" : 4
+  } ]
+}
