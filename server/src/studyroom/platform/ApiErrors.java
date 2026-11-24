@@ -1,4 +1,4 @@
-package studyroom;
+package studyroom.platform;
 
 import java.util.Map;
 import org.slf4j.LoggerFactory;
@@ -8,6 +8,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
+/** Maps exceptions to the stable JSON error shape: {@code {"message": "..."}}. */
 @RestControllerAdvice
 public class ApiErrors {
     @ExceptionHandler(BusinessException.class)
