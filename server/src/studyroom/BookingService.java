@@ -4,25 +4,29 @@ import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static studyroom.BusinessException.require;
-import static studyroom.Store.*;
+import studyroom.platform.BusinessException;
+import studyroom.platform.IdentityService;
+import studyroom.platform.Store;
+import static studyroom.platform.BusinessException.require;
+import static studyroom.platform.Store.*;
 
 /**
- * 需求追踪（仅代码注释，不在界面显示）：
- * FR-01/02 自习室/座位查询；FR-03 预约；FR-04 取消；FR-05/06 签到签退；
- * FR-07/08 个人预约/违约；FR-14 实时座位；FR-15 使用记录；
- * FR-16/17 待核查与违约；FR-19 黑名单。
+ * Reservation lifecycle: create, list, cancel, check-in and check-out.
  *
- * 预约聚合：预约、取消、签到签退、待核查、违约和黑名单。
- * 状态严格对应需求报告 5.4，并按 A 报告 V-01 增加“待核查”缓冲。
+ * <p>Requirement map: FR-01/02 room and seat lookup, FR-03 booking, FR-04 cancel,
+ * FR-05/06 check-in and check-out, FR-07/08 personal history, FR-14 live seats,
+ * FR-15 usage records, FR-16/17 pending review and violations, FR-19 blacklist.
+ *
+ * <p>State transitions follow SRS 5.4, plus the PENDING buffer from report V-01:
+ * a missed check-in becomes PENDING for an administrator, never an automatic violation.
  */
 @Service
 public class BookingService {
     private final Store db;
-    private final Accounts accounts;
+    private final IdentityService identity;
     private final Clock clock;
 
-    /** 只有已预约和已签到会占用座位时段；待核查已经释放座位。 */
+    /** Only BOOKED and CHECKED_IN hold a seat slot; PENDING has already released it. */
     private static final String ACTIVE = "('BOOKED','CHECKED_IN')";
 
     static final String VIEW = "SELECT b.*,u.username,u.display_name,s.code AS seat_code,"
@@ -32,14 +36,14 @@ public class BookingService {
     private static final Set<String> STATUSES = Set.of(
         "BOOKED", "PENDING", "CHECKED_IN", "COMPLETED", "CANCELLED", "VIOLATED");
 
-    public BookingService(Store db, Accounts accounts, Clock clock) {
+    public BookingService(Store db, IdentityService identity, Clock clock) {
         this.db = db;
-        this.accounts = accounts;
+        this.identity = identity;
         this.clock = clock;
     }
 
     public Map<String,Object> policy() {
-        accounts.current();
+        identity.current();
         return rawPolicy();
     }
 
@@ -48,13 +52,13 @@ public class BookingService {
     }
 
     public List<Map<String,Object>> rooms(boolean admin) {
-        if (admin) accounts.admin(); else accounts.current();
+        if (admin) identity.admin(); else identity.current();
         return db.list("SELECT r.*,(SELECT COUNT(*) FROM seats s WHERE s.room_id=r.id) AS seat_count "
             + "FROM rooms r " + (admin ? "" : "WHERE r.enabled=TRUE ") + "ORDER BY r.id");
     }
 
     public List<Map<String,Object>> seats(long roomId, LocalDateTime start, LocalDateTime end, boolean admin) {
-        if (admin) accounts.admin(); else accounts.current();
+        if (admin) identity.admin(); else identity.current();
         var room = db.one("SELECT * FROM rooms WHERE id=?", roomId);
         require(admin || flag(room, "enabled"), 404, "自习室未开放");
         require((start == null) == (end == null), 400, "开始和结束时间必须同时填写");
@@ -83,7 +87,7 @@ public class BookingService {
                 : conflicts > 0 ? "已预约" : "空闲";
             row.put("state", state);
             row.put("bookable", enabled && conflicts == 0);
-            // 安静区是教室属性，下发给前端用于筛选；座位本身不保存该字段。
+    /** Quiet zone is a room attribute used by the seat filter; the seat row does not store it. */
             row.put("is_quiet", flag(row, "room_quiet"));
         }
         return rows;
@@ -92,7 +96,7 @@ public class BookingService {
     @Transactional
     public Map<String,Object> create(Requests.Booking input) {
         db.lock();
-        var user = accounts.current();
+        var user = identity.current();
         var now = LocalDateTime.now(clock);
         var policy = rawPolicy();
 
@@ -131,13 +135,13 @@ public class BookingService {
 
         long booking = db.insert("INSERT INTO reservations(user_id,seat_id,start_at,end_at,status,created_at) "
             + "VALUES(?,?,?,?,'BOOKED',?)", user.get("id"), input.seatId(), start, end, now);
-        accounts.audit((String)user.get("username"), "BOOK", "RESERVATION", booking,
+        identity.audit((String)user.get("username"), "BOOK", "RESERVATION", booking,
             "创建预约：" + start + " ~ " + end);
         return db.one(VIEW + " WHERE b.id=?", booking);
     }
 
     public Map<String,Object> reservations(boolean admin, String status, LocalDate date, int page, int size) {
-        var user = admin ? accounts.admin() : accounts.current();
+        var user = admin ? identity.admin() : identity.current();
         require(page >= 1 && size >= 1 && size <= 100, 400, "页码至少 1，每页 1-100 条");
         String where = " WHERE 1=1";
         List<Object> args = new ArrayList<>();
@@ -163,11 +167,11 @@ public class BookingService {
             "total", total, "page", page, "size", size);
     }
 
-    /** 学生操作：取消、签到、签退。管理员不能代操作（报告 4.2 标为待确认）。 */
+    /** Student actions only: cancel, check-in, check-out. Admin proxy actions are out of scope (SRS 4.2). */
     @Transactional
     public void transition(long booking, String action) {
         db.lock();
-        var user = accounts.current();
+        var user = identity.current();
         var b = db.one("SELECT * FROM reservations WHERE id=?", booking);
         require(id(user, "id") == id(b, "user_id"), 403, "不能操作他人的预约");
 
@@ -198,13 +202,14 @@ public class BookingService {
             }
             default -> throw new BusinessException(400, "未知操作");
         }
-        accounts.audit((String)user.get("username"), action.toUpperCase(Locale.ROOT),
+        identity.audit((String)user.get("username"), action.toUpperCase(Locale.ROOT),
             "RESERVATION", booking, "状态从 " + status + " 流转");
     }
 
     /**
-     * 自动履约：未签到只转“待核查”，不直接记违约（A 报告 V-01）。
-     * 已签到到期自动完成；任务重复执行不会重复处理。
+     * Auto-fulfilment: a missed check-in becomes PENDING for manual review, never a
+     * direct violation (report V-01). An expired checked-in reservation is completed.
+     * The task is idempotent: running it twice processes nothing twice.
      */
     @Transactional
     public int sweep() {
@@ -217,42 +222,42 @@ public class BookingService {
                 now.minusMinutes(id(policy, "grace_minutes")), now)) {
             db.update("UPDATE reservations SET status='PENDING',remark=? WHERE id=?",
                 "超过签到宽限，等待管理员核查", b.get("id"));
-            accounts.audit("SYSTEM", "PENDING_NO_CHECK_IN", "RESERVATION", id(b, "id"),
+            identity.audit("SYSTEM", "PENDING_NO_CHECK_IN", "RESERVATION", id(b, "id"),
                 "超时未签到，转待核查");
             count++;
         }
         for (var b : db.list("SELECT * FROM reservations WHERE status='CHECKED_IN' AND end_at<=?", now)) {
             db.update("UPDATE reservations SET status='COMPLETED',check_out_at=end_at WHERE id=?", b.get("id"));
-            accounts.audit("SYSTEM", "AUTO_CHECK_OUT", "RESERVATION", id(b, "id"),
+            identity.audit("SYSTEM", "AUTO_CHECK_OUT", "RESERVATION", id(b, "id"),
                 "预约到期自动签退");
             count++;
         }
         return count;
     }
 
-    /** 管理员处理“待核查”：确认违约或撤销并放行。 */
+    /** Administrator closes a PENDING reservation: confirm the violation, or dismiss and release it. */
     @Transactional
     public void resolvePending(long booking, boolean violation, String reason) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         var b = db.one("SELECT * FROM reservations WHERE id=?", booking);
         require("PENDING".equals(b.get("status")), 409, "该预约不在待核查状态");
 
         if (violation) {
             db.update("UPDATE reservations SET status='VIOLATED',remark=? WHERE id=?", reason, booking);
             recordViolation(b, "AUTO", reason, (String)admin.get("username"));
-            accounts.audit((String)admin.get("username"), "CONFIRM_NO_CHECK_IN", "RESERVATION", booking, reason);
+            identity.audit((String)admin.get("username"), "CONFIRM_NO_CHECK_IN", "RESERVATION", booking, reason);
         } else {
             db.update("UPDATE reservations SET status='CANCELLED',remark=? WHERE id=?", reason, booking);
-            accounts.audit((String)admin.get("username"), "DISMISS_PENDING", "RESERVATION", booking, reason);
+            identity.audit((String)admin.get("username"), "DISMISS_PENDING", "RESERVATION", booking, reason);
         }
     }
 
-    /** 管理员手动登记违约；一个预约最多一条违约记录。 */
+    /** Administrator records a violation manually; one reservation can own at most one violation. */
     @Transactional
     public void manualViolation(Requests.Violation input) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         var b = db.one("SELECT * FROM reservations WHERE id=?", input.reservationId());
         require(Set.of("BOOKED", "CHECKED_IN", "PENDING").contains(b.get("status")),
             409, "只有未结束的预约可以登记违约");
@@ -262,19 +267,20 @@ public class BookingService {
         db.update("UPDATE reservations SET status='VIOLATED',check_out_at=?,remark=? WHERE id=?",
             LocalDateTime.now(clock), input.reason(), input.reservationId());
         recordViolation(b, "MANUAL", input.reason(), (String)admin.get("username"));
-        accounts.audit((String)admin.get("username"), "MANUAL_VIOLATION", "RESERVATION",
+        identity.audit((String)admin.get("username"), "MANUAL_VIOLATION", "RESERVATION",
             input.reservationId(), input.reason());
     }
 
     /**
-     * 违约次数达到阈值（V-01 暂定 2 次）时自动加入黑名单。
-     * 只创建一条有效记录，避免每次巡检/重复操作反复延长。
+     * Adds one violation. When the active count reaches the policy threshold the
+     * student is blacklisted automatically. An existing active blacklist is reused,
+     * so repeated sweeps or retries do not extend the end date.
      */
     private void recordViolation(Map<String,Object> b, String source, String reason, String actor) {
         var now = LocalDateTime.now(clock);
         long violation = db.insert("INSERT INTO violations(user_id,reservation_id,source,reason,revoked,created_by,created_at) "
             + "VALUES(?,?,?,?,FALSE,?,?)", b.get("user_id"), b.get("id"), source, reason, actor, now);
-        accounts.audit(actor, "VIOLATION", "VIOLATION", violation, reason);
+        identity.audit(actor, "VIOLATION", "VIOLATION", violation, reason);
 
         var policy = rawPolicy();
         long count = db.count("SELECT COUNT(*) FROM violations WHERE user_id=? AND revoked=FALSE", b.get("user_id"));
@@ -284,7 +290,7 @@ public class BookingService {
         }
     }
 
-    /** 自动黑名单：已有有效记录时不重复创建；管理员手工记录走 ResourceService。 */
+    /** Automatic blacklist: reuse an active record; administrator-issued ones go through ResourceService. */
     private void applyBlacklist(Object userId, String reason, int days, String actor) {
         var now = LocalDateTime.now(clock);
         long active = db.count("SELECT COUNT(*) FROM blacklist_records WHERE user_id=? AND active=TRUE AND end_at>?",
@@ -299,21 +305,21 @@ public class BookingService {
         if (current == null || current.isBefore(end)) {
             db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", end, userId);
         }
-        accounts.audit(actor, "BLACKLIST", "BLACKLIST", record, reason);
+        identity.audit(actor, "BLACKLIST", "BLACKLIST", record, reason);
     }
 
     @Transactional
     public void revokeViolation(long violation, String reason) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         var v = db.one("SELECT * FROM violations WHERE id=?", violation);
         require(!flag(v, "revoked"), 409, "记录已撤销");
         db.update("UPDATE violations SET revoked=TRUE,revoke_reason=? WHERE id=?", reason, violation);
-        accounts.audit((String)admin.get("username"), "REVOKE_VIOLATION", "VIOLATION", violation, reason);
+        identity.audit((String)admin.get("username"), "REVOKE_VIOLATION", "VIOLATION", violation, reason);
     }
 
     public List<Map<String,Object>> violations(boolean admin) {
-        var user = admin ? accounts.admin() : accounts.current();
+        var user = admin ? identity.admin() : identity.current();
         return db.list("SELECT v.*,u.username,u.display_name FROM violations v "
             + "JOIN app_users u ON v.user_id=u.id "
             + (admin ? "" : "WHERE v.user_id=? ")

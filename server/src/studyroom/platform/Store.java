@@ -1,4 +1,4 @@
-package studyroom;
+package studyroom.platform;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -7,7 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Repository;
 
-/** 所有 SQL 均使用占位参数；统一 H2 的列名和时间表示。 */
+/** Thin JDBC helper: parameterised SQL only, H2 column names and time values normalised. */
 @Repository
 public class Store {
     private final JdbcTemplate jdbc;

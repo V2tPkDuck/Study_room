@@ -5,21 +5,23 @@ import java.util.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static studyroom.BusinessException.require;
-import static studyroom.Store.*;
+import studyroom.platform.IdentityService;
+import studyroom.platform.Store;
+import static studyroom.platform.BusinessException.require;
+import static studyroom.platform.Store.*;
 
-/** 资源、用户、黑名单、统计和审计。
- *  需求追踪（仅代码注释）：FR-12/13 资源；FR-18 用户；FR-19 黑名单；FR-23/24 统计；QR-SEC-04 审计。 */
+/** Rooms, seats, users, blacklists, statistics and audit queries.
+ *  Requirement map: FR-12/13 resources, FR-18 users, FR-19 blacklist, FR-23/24 statistics, QR-SEC-04 audit. */
 @Service
 public class ResourceService {
     private final Store db;
-    private final Accounts accounts;
+    private final IdentityService identity;
     private final Clock clock;
     private final PasswordEncoder passwords;
 
-    public ResourceService(Store db, Accounts accounts, Clock clock, PasswordEncoder passwords) {
+    public ResourceService(Store db, IdentityService identity, Clock clock, PasswordEncoder passwords) {
         this.db = db;
-        this.accounts = accounts;
+        this.identity = identity;
         this.clock = clock;
         this.passwords = passwords;
     }
@@ -27,7 +29,7 @@ public class ResourceService {
     @Transactional
     public long saveRoom(Long roomId, Requests.Room input) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         require(input.openTime() != null && input.closeTime() != null, 400, "开放时间不能为空");
         require(LocalTime.parse(input.openTime()).isBefore(LocalTime.parse(input.closeTime())),
             400, "开放时间需早于关闭时间，不支持跨夜开放");
@@ -45,14 +47,14 @@ public class ResourceService {
                 + "WHERE id=?", input.name().trim(), input.building().trim(), input.floorNo(),
                 input.openTime(), input.closeTime(), input.description(), input.enabled(), input.isQuiet(), roomId);
         }
-        accounts.audit((String)admin.get("username"), "SAVE_ROOM", "ROOM", roomId, input.name());
+        identity.audit((String)admin.get("username"), "SAVE_ROOM", "ROOM", roomId, input.name());
         return roomId;
     }
 
     @Transactional
     public long saveSeat(Long seatId, Requests.Seat input) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         db.one("SELECT id FROM rooms WHERE id=?", input.roomId());
 
         if (seatId == null) {
@@ -66,14 +68,14 @@ public class ResourceService {
             db.update("UPDATE seats SET code=?,has_power=?,enabled=? WHERE id=?",
                 input.code().trim(), input.hasPower(), input.enabled(), seatId);
         }
-        accounts.audit((String)admin.get("username"), "SAVE_SEAT", "SEAT", seatId, input.code());
+        identity.audit((String)admin.get("username"), "SAVE_SEAT", "SEAT", seatId, input.code());
         return seatId;
     }
 
     @Transactional
     public void delete(String type, long resource) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         if (type.equals("room")) {
             db.one("SELECT id FROM rooms WHERE id=?", resource);
             require(db.count("SELECT COUNT(*) FROM seats WHERE room_id=?", resource) == 0,
@@ -85,50 +87,50 @@ public class ResourceService {
                 409, "座位已有预约历史，请使用停用功能");
             db.update("DELETE FROM seats WHERE id=?", resource);
         }
-        accounts.audit((String)admin.get("username"), "DELETE_RESOURCE",
+        identity.audit((String)admin.get("username"), "DELETE_RESOURCE",
             type.toUpperCase(Locale.ROOT), resource, "删除无历史记录的资源");
     }
 
     public List<Map<String,Object>> users(String query) {
-        accounts.admin();
+        identity.admin();
         String q = query == null ? "" : query;
-        return db.list("SELECT " + Accounts.PUBLIC_FIELDS + " FROM app_users "
+        return db.list("SELECT " + IdentityService.PUBLIC_FIELDS + " FROM app_users "
             + "WHERE username LIKE ? OR display_name LIKE ? ORDER BY id DESC LIMIT 500",
             "%" + q + "%", "%" + q + "%");
     }
 
-    /** FR-18：管理员新增学生账号，替代学生自助注册（报告未列注册为 FR）。 */
+    /** FR-18: administrator creates a student account; self-registration is out of scope. */
     @Transactional
     public long createUser(Requests.UserCreate input) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         require(db.count("SELECT COUNT(*) FROM app_users WHERE username=?", input.username()) == 0,
             409, "账号已存在");
         var now = LocalDateTime.now(clock);
         long userId = db.insert("INSERT INTO app_users(username,display_name,password_hash,role,enabled,created_at) "
             + "VALUES(?,?,?,'STUDENT',TRUE,?)", input.username(), input.displayName().trim(),
             passwords.encode(input.password()), now);
-        accounts.audit((String)admin.get("username"), "CREATE_USER", "USER", userId, input.username());
+        identity.audit((String)admin.get("username"), "CREATE_USER", "USER", userId, input.username());
         return userId;
     }
 
     @Transactional
     public void updateUser(long userId, Requests.UserUpdate input) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         db.one("SELECT id FROM app_users WHERE id=?", userId);
         require(id(admin, "id") != userId || input.enabled(), 400, "不能停用当前登录账号");
         db.update("UPDATE app_users SET display_name=?,enabled=? WHERE id=?",
             input.displayName().trim(), input.enabled(), userId);
-        accounts.audit((String)admin.get("username"), "UPDATE_USER", "USER", userId,
+        identity.audit((String)admin.get("username"), "UPDATE_USER", "USER", userId,
             "修改资料/启停账号：" + input.enabled());
     }
 
-    /** FR-19：管理员手工加入黑名单，写入独立记录，便于答辩展示原因和起止。 */
+    /** FR-19: administrator adds a blacklist record with its own reason and date range. */
     @Transactional
     public long blacklist(long userId, Requests.Blacklist input) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         db.one("SELECT id FROM app_users WHERE id=?", userId);
         var now = LocalDateTime.now(clock);
         var end = now.plusDays(input.days());
@@ -139,15 +141,15 @@ public class ResourceService {
         if (current == null || current.isBefore(end)) {
             db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", end, userId);
         }
-        accounts.audit((String)admin.get("username"), "BLACKLIST", "BLACKLIST", record, input.reason());
+        identity.audit((String)admin.get("username"), "BLACKLIST", "BLACKLIST", record, input.reason());
         return record;
     }
 
-    /** 解除某学生的全部有效黑名单记录，并重算账号上的截止时间。 */
+    /** Releases every active blacklist record and recomputes the deadline on the account. */
     @Transactional
     public void releaseBlacklist(long userId, String reason) {
         db.lock();
-        var admin = accounts.admin();
+        var admin = identity.admin();
         db.one("SELECT id FROM app_users WHERE id=?", userId);
         long active = db.count("SELECT COUNT(*) FROM blacklist_records WHERE user_id=? AND active=TRUE", userId);
         require(active > 0, 409, "该学生当前没有有效黑名单");
@@ -157,22 +159,22 @@ public class ResourceService {
         var row = db.one("SELECT MAX(end_at) AS max_end FROM blacklist_records "
             + "WHERE user_id=? AND active=TRUE AND end_at>?", userId, now);
         db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", row.get("max_end"), userId);
-        accounts.audit((String)admin.get("username"), "RELEASE_BLACKLIST", "BLACKLIST", userId, reason);
+        identity.audit((String)admin.get("username"), "RELEASE_BLACKLIST", "BLACKLIST", userId, reason);
     }
 
     public List<Map<String,Object>> blacklistRecords(long userId) {
-        accounts.admin();
+        identity.admin();
         return db.list("SELECT * FROM blacklist_records WHERE user_id=? ORDER BY id DESC LIMIT 200", userId);
     }
 
     public List<Map<String,Object>> audits() {
-        accounts.admin();
+        identity.admin();
         return db.list("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 500");
     }
 
-    /** FR-23/24/25：统计口径在页面和文档中写明，避免把“预约需求”误读成“成功使用”。 */
+    /** FR-23/24/25: counter definitions are documented so a booking request is not misread as successful usage. */
     public Map<String,Object> stats() {
-        accounts.admin();
+        identity.admin();
         var now = LocalDateTime.now(clock);
         var today = now.toLocalDate();
 

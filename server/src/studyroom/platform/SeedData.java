@@ -1,4 +1,4 @@
-package studyroom;
+package studyroom.platform;
 
 import java.time.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,7 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 首次启动时补齐策略、演示账号和 72 个座位；不重置已有数据。 */
+/** Seeds policy, demo accounts and 72 seats on first start; never resets existing data. */
 @Component
 public class SeedData implements ApplicationRunner {
     private final Store db;
