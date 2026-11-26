@@ -6,7 +6,6 @@ import java.util.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.platform.IdentityService;
 import studyroom.platform.Store;
 import static studyroom.platform.BusinessException.require;
@@ -36,7 +35,7 @@ public class UserAdminService {
     }
 
     @Transactional
-    public long createUser(Requests.UserCreate input) {
+    public long createUser(ResourceRequests.UserCreate input) {
         db.lock();
         var admin = identity.admin();
         require(!identity.usernameExists(input.username()), 409, "账号已存在");
@@ -48,7 +47,7 @@ public class UserAdminService {
     }
 
     @Transactional
-    public void updateUser(long userId, Requests.UserUpdate input) {
+    public void updateUser(long userId, ResourceRequests.UserUpdate input) {
         db.lock();
         var admin = identity.admin();
         identity.user(userId);

@@ -2,7 +2,6 @@ package studyroom.resource;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.platform.IdentityService;
 import studyroom.platform.Store;
 import static studyroom.platform.BusinessException.require;
@@ -24,7 +23,7 @@ public class SeatAdminService {
     }
 
     @Transactional
-    public long saveSeat(Long seatId, Requests.Seat input) {
+    public long saveSeat(Long seatId, ResourceRequests.Seat input) {
         db.lock();
         var admin = identity.admin();
         rooms.requireRoom(input.roomId());

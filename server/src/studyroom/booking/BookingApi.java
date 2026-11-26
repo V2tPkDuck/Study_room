@@ -6,8 +6,6 @@ import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import studyroom.Requests;
-
 /**
  * Reservation endpoints.
  *
@@ -61,7 +59,7 @@ public class BookingApi {
     /** FR-03: create a reservation. Validation order and messages are owned by the service. */
     @PostMapping("/reservations")
     @ResponseStatus(HttpStatus.CREATED)
-    Map<String,Object> createReservation(@Valid @RequestBody Requests.Booking input) {
+    Map<String,Object> createReservation(@Valid @RequestBody BookingRequests.Booking input) {
         return bookings.create(input);
     }
 
@@ -83,21 +81,21 @@ public class BookingApi {
 
     /** FR-16: confirm that a PENDING reservation is a violation. */
     @PostMapping("/admin/reservations/{id}/confirm-violation")
-    Map<String,String> confirmViolation(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
+    Map<String,String> confirmViolation(@PathVariable long id, @Valid @RequestBody BookingRequests.Reason input) {
         fulfillment.resolvePending(id, true, input.reason());
         return ok();
     }
 
     /** FR-16: dismiss a PENDING review and release the reservation. */
     @PostMapping("/admin/reservations/{id}/dismiss-pending")
-    Map<String,String> dismissPending(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
+    Map<String,String> dismissPending(@PathVariable long id, @Valid @RequestBody BookingRequests.Reason input) {
         fulfillment.resolvePending(id, false, input.reason());
         return ok();
     }
 
     /** FR-17: administrator registers a violation manually. */
     @PostMapping("/admin/violations")
-    Map<String,String> registerViolation(@Valid @RequestBody Requests.Violation input) {
+    Map<String,String> registerViolation(@Valid @RequestBody BookingRequests.Violation input) {
         fulfillment.manualViolation(input);
         return ok();
     }

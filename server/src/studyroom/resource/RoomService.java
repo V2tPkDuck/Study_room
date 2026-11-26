@@ -3,7 +3,6 @@ package studyroom.resource;
 import java.time.LocalTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.platform.IdentityService;
 import studyroom.platform.Store;
 import static studyroom.platform.BusinessException.require;
@@ -22,7 +21,7 @@ public class RoomService {
     }
 
     @Transactional
-    public long saveRoom(Long roomId, Requests.Room input) {
+    public long saveRoom(Long roomId, ResourceRequests.Room input) {
         db.lock();
         var admin = identity.admin();
         require(input.openTime() != null && input.closeTime() != null, 400, "开放时间不能为空");

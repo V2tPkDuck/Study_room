@@ -3,7 +3,6 @@ package studyroom.credit;
 import jakarta.validation.Valid;
 import java.util.*;
 import org.springframework.web.bind.annotation.*;
-import studyroom.Requests;
 
 /**
  * Credit routes: own/all violations, revoke, and administrator blacklist
@@ -36,20 +35,20 @@ public class CreditApi {
 
     /** FR-17: revoke a violation record. */
     @PostMapping("/admin/violations/{id}/revoke")
-    Map<String, String> revokeViolation(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
+    Map<String, String> revokeViolation(@PathVariable long id, @Valid @RequestBody CreditRequests.Reason input) {
         credit.revoke(id, input.reason());
         return ok();
     }
 
     /** FR-19: add a blacklist record with its own reason and end date. */
     @PostMapping("/admin/users/{id}/blacklist")
-    Map<String, Long> addBlacklist(@PathVariable long id, @Valid @RequestBody Requests.Blacklist input) {
+    Map<String, Long> addBlacklist(@PathVariable long id, @Valid @RequestBody CreditRequests.Blacklist input) {
         return Map.of("id", credit.manualBlacklist(id, input));
     }
 
     /** FR-19: release every active blacklist record of one student. */
     @PostMapping("/admin/users/{id}/blacklist/release")
-    Map<String, String> releaseBlacklist(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
+    Map<String, String> releaseBlacklist(@PathVariable long id, @Valid @RequestBody CreditRequests.Reason input) {
         credit.release(id, input.reason());
         return ok();
     }

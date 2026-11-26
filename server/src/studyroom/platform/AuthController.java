@@ -9,7 +9,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
-import studyroom.Requests;
 
 /** Session endpoints: health probe, CSRF token, login, current user. */
 @RestController
@@ -40,7 +39,7 @@ public class AuthController {
 
     /** Authenticates the credentials, rotates the session id, and returns the account. */
     @PostMapping("/auth/login")
-    Map<String,Object> login(@Valid @RequestBody Requests.Login input,
+    Map<String,Object> login(@Valid @RequestBody LoginRequest input,
                              HttpServletRequest request, HttpServletResponse response) {
         try {
             var auth = manager.authenticate(

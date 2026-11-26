@@ -6,7 +6,6 @@ import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import studyroom.Requests;
 import studyroom.booking.SeatQueryService;
 /**
  * Administrator resource endpoints.
@@ -51,13 +50,13 @@ public class ResourceApi {
     /** FR-12: create a room. */
     @PostMapping("/admin/rooms")
     @ResponseStatus(HttpStatus.CREATED)
-    Map<String,Long> createRoom(@Valid @RequestBody Requests.Room input) {
+    Map<String,Long> createRoom(@Valid @RequestBody ResourceRequests.Room input) {
         return Map.of("id", rooms.saveRoom(null, input));
     }
 
     /** FR-12: update a room; blocked while it still has active reservations. */
     @PutMapping("/admin/rooms/{id}")
-    Map<String,String> updateRoom(@PathVariable long id, @Valid @RequestBody Requests.Room input) {
+    Map<String,String> updateRoom(@PathVariable long id, @Valid @RequestBody ResourceRequests.Room input) {
         rooms.saveRoom(id, input);
         return ok();
     }
@@ -72,13 +71,13 @@ public class ResourceApi {
     /** FR-13: create a seat under an existing room. */
     @PostMapping("/admin/seats")
     @ResponseStatus(HttpStatus.CREATED)
-    Map<String,Long> createSeat(@Valid @RequestBody Requests.Seat input) {
+    Map<String,Long> createSeat(@Valid @RequestBody ResourceRequests.Seat input) {
         return Map.of("id", seats.saveSeat(null, input));
     }
 
     /** FR-13: update a seat; a seat cannot move to another room. */
     @PutMapping("/admin/seats/{id}")
-    Map<String,String> updateSeat(@PathVariable long id, @Valid @RequestBody Requests.Seat input) {
+    Map<String,String> updateSeat(@PathVariable long id, @Valid @RequestBody ResourceRequests.Seat input) {
         seats.saveSeat(id, input);
         return ok();
     }
@@ -99,13 +98,13 @@ public class ResourceApi {
     /** FR-18: create a student account. */
     @PostMapping("/admin/users")
     @ResponseStatus(HttpStatus.CREATED)
-    Map<String,Long> createUser(@Valid @RequestBody Requests.UserCreate input) {
+    Map<String,Long> createUser(@Valid @RequestBody ResourceRequests.UserCreate input) {
         return Map.of("id", userAdmin.createUser(input));
     }
 
     /** FR-18: rename or enable/disable an account. */
     @PutMapping("/admin/users/{id}")
-    Map<String,String> updateUser(@PathVariable long id, @Valid @RequestBody Requests.UserUpdate input) {
+    Map<String,String> updateUser(@PathVariable long id, @Valid @RequestBody ResourceRequests.UserUpdate input) {
         userAdmin.updateUser(id, input);
         return ok();
     }

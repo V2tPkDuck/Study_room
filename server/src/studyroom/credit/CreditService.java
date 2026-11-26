@@ -4,7 +4,6 @@ import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.platform.IdentityService;
 import studyroom.platform.PolicyService;
 import studyroom.platform.Store;
@@ -93,7 +92,7 @@ public class CreditService {
      * range.
      */
     @Transactional
-    public long manualBlacklist(long userId, Requests.Blacklist input) {
+    public long manualBlacklist(long userId, CreditRequests.Blacklist input) {
         db.lock();
         var admin = identity.admin();
         credit.requireUser(userId);

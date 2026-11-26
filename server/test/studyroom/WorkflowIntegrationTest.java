@@ -20,7 +20,10 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+import studyroom.booking.BookingRequests;
+import studyroom.credit.CreditRequests;
+import studyroom.feedback.FeedbackRequests;
+import studyroom.resource.ResourceRequests;
 /**
  * 8 组关键验收：身份边界、预约冲突、时间规则、签到签退、待核查、
  * 违约黑名单、投诉评价、并发唯一性。
@@ -113,7 +116,7 @@ class WorkflowIntegrationTest {
     }
 
     long book(String who, long seatId, LocalDateTime start, LocalDateTime end) throws Exception {
-        var result = postAs("/reservations", new Requests.Booking(seatId, start, end), who)
+        var result = postAs("/reservations", new BookingRequests.Booking(seatId, start, end), who)
             .andExpect(status().isCreated()).andReturn();
         return json.readTree(result.getResponse().getContentAsString()).get("id").asLong();
     }
@@ -143,9 +146,9 @@ class WorkflowIntegrationTest {
     @Test
     void seatAndUserOverlapAreRejectedButAdjacentSlotsWork() throws Exception {
         book("alice", s1, now.plusMinutes(5), now.plusHours(1));
-        postAs("/reservations", new Requests.Booking(s1, now.plusMinutes(30), now.plusHours(2)), "bobby")
+        postAs("/reservations", new BookingRequests.Booking(s1, now.plusMinutes(30), now.plusHours(2)), "bobby")
             .andExpect(status().isConflict());
-        postAs("/reservations", new Requests.Booking(s2, now.plusMinutes(30), now.plusHours(2)), "alice")
+        postAs("/reservations", new BookingRequests.Booking(s2, now.plusMinutes(30), now.plusHours(2)), "alice")
             .andExpect(status().isConflict());
         book("bobby", s1, now.plusHours(1), now.plusHours(2));
     }
@@ -153,23 +156,23 @@ class WorkflowIntegrationTest {
     @Test
     void timeRulesAndPerUserActiveLimit() throws Exception {
         for (var input : List.of(
-            new Requests.Booking(s1, now.minusHours(1), now),
-            new Requests.Booking(s1, now.plusMinutes(1), now.plusMinutes(10)),
-            new Requests.Booking(s1, now.plusMinutes(1), now.plusHours(5)),
-            new Requests.Booking(s1, now.plusDays(8), now.plusDays(8).plusHours(1)),
-            new Requests.Booking(s1, now.withHour(22), now.plusDays(1).withHour(8)),
-            new Requests.Booking(s1, now.plusDays(1).withHour(6), now.plusDays(1).withHour(7)))) {
+            new BookingRequests.Booking(s1, now.minusHours(1), now),
+            new BookingRequests.Booking(s1, now.plusMinutes(1), now.plusMinutes(10)),
+            new BookingRequests.Booking(s1, now.plusMinutes(1), now.plusHours(5)),
+            new BookingRequests.Booking(s1, now.plusDays(8), now.plusDays(8).plusHours(1)),
+            new BookingRequests.Booking(s1, now.withHour(22), now.plusDays(1).withHour(8)),
+            new BookingRequests.Booking(s1, now.plusDays(1).withHour(6), now.plusDays(1).withHour(7)))) {
             postAs("/reservations", input, "alice").andExpect(status().isBadRequest());
         }
         db.update("UPDATE seats SET enabled=FALSE WHERE id=?", s1);
-        postAs("/reservations", new Requests.Booking(s1, now.plusMinutes(5), now.plusHours(1)), "alice")
+        postAs("/reservations", new BookingRequests.Booking(s1, now.plusMinutes(5), now.plusHours(1)), "alice")
             .andExpect(status().isConflict());
 
         db.update("UPDATE seats SET enabled=TRUE WHERE id=?", s1);
         book("alice", s1, now.plusHours(1), now.plusHours(2));
         book("alice", s2, now.plusHours(2), now.plusHours(3));
         book("alice", s3, now.plusHours(3), now.plusHours(4));
-        postAs("/reservations", new Requests.Booking(s4, now.plusHours(4), now.plusHours(5)), "alice")
+        postAs("/reservations", new BookingRequests.Booking(s4, now.plusHours(4), now.plusHours(5)), "alice")
             .andExpect(status().isConflict());
     }
 
@@ -203,12 +206,12 @@ class WorkflowIntegrationTest {
         assertThat(fulfillment.sweep()).isZero();
 
         postAs("/admin/reservations/" + id + "/confirm-violation",
-            new Requests.Reason("管理员确认未签到"), "admin").andExpect(status().isOk());
+            new BookingRequests.Reason("管理员确认未签到"), "admin").andExpect(status().isOk());
         assertThat(db.one("SELECT status FROM reservations WHERE id=?", id).get("status")).isEqualTo("VIOLATED");
         assertThat(db.count("SELECT COUNT(*) FROM violations WHERE reservation_id=?", id)).isEqualTo(1);
 
         postAs("/admin/reservations/" + id + "/confirm-violation",
-            new Requests.Reason("重复确认"), "admin").andExpect(status().isConflict());
+            new BookingRequests.Reason("重复确认"), "admin").andExpect(status().isConflict());
     }
 
     @Test
@@ -216,16 +219,16 @@ class WorkflowIntegrationTest {
         long first = book("alice", s1, now.plusHours(1), now.plusHours(2));
         long second = book("alice", s2, now.plusHours(2), now.plusHours(3));
 
-        postAs("/admin/violations", new Requests.Violation(first, "第一次违约"), "admin").andExpect(status().isOk());
+        postAs("/admin/violations", new BookingRequests.Violation(first, "第一次违约"), "admin").andExpect(status().isOk());
         assertThat(db.count("SELECT COUNT(*) FROM blacklist_records WHERE user_id=? AND active=TRUE", alice)).isZero();
-        postAs("/admin/violations", new Requests.Violation(second, "第二次违约"), "admin").andExpect(status().isOk());
+        postAs("/admin/violations", new BookingRequests.Violation(second, "第二次违约"), "admin").andExpect(status().isOk());
         assertThat(db.count("SELECT COUNT(*) FROM blacklist_records WHERE user_id=? AND active=TRUE", alice)).isEqualTo(1);
 
-        postAs("/reservations", new Requests.Booking(s3, now.plusHours(3), now.plusHours(4)), "alice")
+        postAs("/reservations", new BookingRequests.Booking(s3, now.plusHours(3), now.plusHours(4)), "alice")
             .andExpect(status().isForbidden());
 
         postAs("/admin/users/" + alice + "/blacklist/release",
-            new Requests.Reason("申诉核实，提前解除"), "admin").andExpect(status().isOk());
+            new CreditRequests.Reason("申诉核实，提前解除"), "admin").andExpect(status().isOk());
         book("alice", s3, now.plusHours(3), now.plusHours(4));
     }
 
@@ -236,23 +239,23 @@ class WorkflowIntegrationTest {
         clock.set(now.plusMinutes(40));
         postAs("/reservations/" + id + "/check-out", Map.of(), "alice").andExpect(status().isOk());
 
-        postAs("/reviews", new Requests.Review(id, 5, "安静整洁"), "alice").andExpect(status().isCreated());
-        postAs("/reviews", new Requests.Review(id, 4, "重复评价"), "alice").andExpect(status().isConflict());
+        postAs("/reviews", new FeedbackRequests.Review(id, 5, "安静整洁"), "alice").andExpect(status().isCreated());
+        postAs("/reviews", new FeedbackRequests.Review(id, 4, "重复评价"), "alice").andExpect(status().isConflict());
 
-        var complaint = postAs("/complaints", new Requests.Complaint(null, "空调反馈", "温度偏低"), "alice")
+        var complaint = postAs("/complaints", new FeedbackRequests.Complaint(null, "空调反馈", "温度偏低"), "alice")
             .andExpect(status().isCreated()).andReturn();
         long cid = json.readTree(complaint.getResponse().getContentAsString()).get("id").asLong();
         postAs("/complaints/" + cid + "/withdraw", Map.of(), "alice").andExpect(status().isOk());
         assertThat(db.one("SELECT status FROM complaints WHERE id=?", cid).get("status")).isEqualTo("WITHDRAWN");
         postAs("/complaints/" + cid + "/withdraw", Map.of(), "alice").andExpect(status().isConflict());
 
-        var second = postAs("/complaints", new Requests.Complaint(id, "座位反馈", "桌面有灰"), "alice")
+        var second = postAs("/complaints", new FeedbackRequests.Complaint(id, "座位反馈", "桌面有灰"), "alice")
             .andExpect(status().isCreated()).andReturn();
         long cid2 = json.readTree(second.getResponse().getContentAsString()).get("id").asLong();
         putAs("/admin/complaints/" + cid2,
-            new Requests.Reply("RESOLVED", "已安排清洁", "PENDING"), "admin").andExpect(status().isOk());
+            new FeedbackRequests.Reply("RESOLVED", "已安排清洁", "PENDING"), "admin").andExpect(status().isOk());
         putAs("/admin/complaints/" + cid2,
-            new Requests.Reply("PROCESSING", "重复处理", "PENDING"), "admin").andExpect(status().isConflict());
+            new FeedbackRequests.Reply("PROCESSING", "重复处理", "PENDING"), "admin").andExpect(status().isConflict());
         getAs("/complaints", "alice").andExpect(jsonPath("$[0].reply").value("已安排清洁"));
         getAs("/complaints", "bobby").andExpect(jsonPath("$.length()").value(0));
     }
@@ -260,16 +263,16 @@ class WorkflowIntegrationTest {
     @Test
     void resourcesWithActiveBookingsCannotBeChangedAndOwnershipIsChecked() throws Exception {
         long id = book("alice", s1, now.plusMinutes(5), now.plusHours(1));
-        putAs("/admin/seats/" + s1, new Requests.Seat(room, "01", true, false), "admin")
+        putAs("/admin/seats/" + s1, new ResourceRequests.Seat(room, "01", true, false), "admin")
             .andExpect(status().isConflict());
-        putAs("/admin/rooms/" + room, new Requests.Room("测试阅览室", "图书馆", 2, "08:00", "22:00", "test", false, true), "admin")
+        putAs("/admin/rooms/" + room, new ResourceRequests.Room("测试阅览室", "图书馆", 2, "08:00", "22:00", "test", false, true), "admin")
             .andExpect(status().isConflict());
         mvc.perform(delete("/api/admin/seats/" + s1).with(user("admin").roles("ADMIN")).with(csrf()))
             .andExpect(status().isConflict());
 
         postAs("/reservations/" + id + "/cancel", Map.of(), "bobby").andExpect(status().isForbidden());
-        postAs("/complaints", new Requests.Complaint(id, "越权关联", "测试"), "bobby").andExpect(status().isForbidden());
-        postAs("/reviews", new Requests.Review(id, 5, "越权评价"), "bobby").andExpect(status().isForbidden());
+        postAs("/complaints", new FeedbackRequests.Complaint(id, "越权关联", "测试"), "bobby").andExpect(status().isForbidden());
+        postAs("/reviews", new FeedbackRequests.Review(id, 5, "越权评价"), "bobby").andExpect(status().isForbidden());
     }
 
     @Test
@@ -282,7 +285,7 @@ class WorkflowIntegrationTest {
                 futures.add(pool.submit(() -> {
                     start.await();
                     return postAs("/reservations",
-                        new Requests.Booking(s1, now.plusMinutes(5), now.plusHours(1)), who)
+                        new BookingRequests.Booking(s1, now.plusMinutes(5), now.plusHours(1)), who)
                         .andReturn().getResponse().getStatus();
                 }));
             }

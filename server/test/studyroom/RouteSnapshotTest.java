@@ -21,6 +21,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
+import studyroom.booking.BookingRequests;
+import studyroom.credit.CreditRequests;
+import studyroom.feedback.FeedbackRequests;
+import studyroom.resource.ResourceRequests;
 /**
  * 路由快照测试（防退化安全网）。
  *
@@ -219,7 +223,7 @@ class RouteSnapshotTest {
         anonGet("03-匿名-当前用户", "/auth/me");
         anonGet("04-匿名-查我的预约", "/reservations");
         anonPost("05-匿名-预约", "/reservations",
-            new Requests.Booking(s1, now.plusHours(1), now.plusHours(2)));
+            new BookingRequests.Booking(s1, now.plusHours(1), now.plusHours(2)));
         getAs("06-学生-查管理端用户", "alice", "/admin/users");
         getAs("07-学生-查管理端统计", "alice", "/admin/stats");
         getAs("08-管理员-查用户", "admin", "/admin/users");
@@ -228,13 +232,13 @@ class RouteSnapshotTest {
         getAs("10-学生-查自习室", "alice", "/rooms");
         getAs("11-学生-查座位", "alice", "/rooms/" + room + "/seats");
         ObjectNode booking = postAs("12-学生-预约", "alice", "/reservations",
-            new Requests.Booking(s1, now.plusHours(1), now.plusHours(2)));
+            new BookingRequests.Booking(s1, now.plusHours(1), now.plusHours(2)));
         long bookingId = id(booking);
         getAs("13-学生-我的预约", "alice", "/reservations");
         postAs("14-学生-重复预约同座同时段", "alice", "/reservations",
-            new Requests.Booking(s1, now.plusHours(1), now.plusHours(2)));
+            new BookingRequests.Booking(s1, now.plusHours(1), now.plusHours(2)));
         postAs("15-学生-自己时段重叠", "alice", "/reservations",
-            new Requests.Booking(s2, now.plusMinutes(90), now.plusMinutes(150)));
+            new BookingRequests.Booking(s2, now.plusMinutes(90), now.plusMinutes(150)));
         getAs("16-学生-查座位-指定时段", "alice",
             "/rooms/" + room + "/seats?start=" + now.plusHours(1) + "&end=" + now.plusHours(2));
         postAs("17-学生-取消他人预约", "bobby", "/reservations/" + bookingId + "/cancel", Map.of());
@@ -243,14 +247,14 @@ class RouteSnapshotTest {
         postAs("19-学生-窗口内签到", "alice", "/reservations/" + bookingId + "/check-in", Map.of());
         postAs("20-学生-签退", "alice", "/reservations/" + bookingId + "/check-out", Map.of());
         ObjectNode review = postAs("21-学生-评价", "alice", "/reviews",
-            new Requests.Review(bookingId, 5, "环境安静"));
+            new FeedbackRequests.Review(bookingId, 5, "环境安静"));
         long reviewId = id(review);
-        postAs("22-学生-重复评价", "alice", "/reviews", new Requests.Review(bookingId, 4, "再评一次"));
+        postAs("22-学生-重复评价", "alice", "/reviews", new FeedbackRequests.Review(bookingId, 4, "再评一次"));
         getAs("23-学生-我的违约-空", "alice", "/violations");
 
         // ---------- C 待核查 / 违约 / 黑名单 ----------
         ObjectNode second = postAs("30-学生-预约第二单", "alice", "/reservations",
-            new Requests.Booking(s2, now.plusHours(2), now.plusHours(3)));
+            new BookingRequests.Booking(s2, now.plusHours(2), now.plusHours(3)));
         long secondId = id(second);
         clock.set(now.plusHours(2).plusMinutes(20));
         postAs("31-管理员-巡检", "admin", "/admin/sweep", Map.of());
@@ -258,40 +262,40 @@ class RouteSnapshotTest {
         getAs("33-学生-我的预约-含待核查", "alice", "/reservations");
         postAs("34-管理员-确认违约", "admin",
             "/admin/reservations/" + secondId + "/confirm-violation",
-            new Requests.Reason("超时未签到"));
+            new CreditRequests.Reason("超时未签到"));
         postAs("35-管理员-重复确认违约", "admin",
             "/admin/reservations/" + secondId + "/confirm-violation",
-            new Requests.Reason("重复确认"));
+            new CreditRequests.Reason("重复确认"));
         getAs("36-管理员-违约列表", "admin", "/admin/violations");
         getAs("37-学生-我的违约", "alice", "/violations");
         postAs("38-管理员-对已违约再登记", "admin", "/admin/violations",
-            new Requests.Violation(secondId, "重复登记"));
+            new BookingRequests.Violation(secondId, "重复登记"));
         ObjectNode third = postAs("39-学生-预约第三单", "alice", "/reservations",
-            new Requests.Booking(s3, now.plusHours(4), now.plusHours(5)));
+            new BookingRequests.Booking(s3, now.plusHours(4), now.plusHours(5)));
         long thirdId = id(third);
         postAs("40-管理员-手动登记违约", "admin", "/admin/violations",
-            new Requests.Violation(thirdId, "现场违规"));
+            new BookingRequests.Violation(thirdId, "现场违规"));
         getAs("41-管理员-黑名单记录", "admin", "/admin/users/" + aliceId + "/blacklist");
         postAs("42-学生-黑名单期预约", "alice", "/reservations",
-            new Requests.Booking(s4, now.plusHours(6), now.plusHours(7)));
+            new BookingRequests.Booking(s4, now.plusHours(6), now.plusHours(7)));
         postAs("43-管理员-解除黑名单", "admin",
-            "/admin/users/" + aliceId + "/blacklist/release", new Requests.Reason("申诉通过"));
+            "/admin/users/" + aliceId + "/blacklist/release", new CreditRequests.Reason("申诉通过"));
         postAs("44-学生-解除后可预约", "alice", "/reservations",
-            new Requests.Booking(s4, now.plusHours(6), now.plusHours(7)));
+            new BookingRequests.Booking(s4, now.plusHours(6), now.plusHours(7)));
 
         // ---------- D 投诉与评价管理 ----------
         ObjectNode complaint = postAs("50-学生-提交投诉", "alice", "/complaints",
-            new Requests.Complaint(bookingId, "座位问题", "桌面有灰"));
+            new FeedbackRequests.Complaint(bookingId, "座位问题", "桌面有灰"));
         long complaintId = id(complaint);
         getAs("51-学生-我的投诉", "alice", "/complaints");
         getAs("52-管理员-全部投诉", "admin", "/admin/complaints");
         putAs("53-管理员-回复投诉", "admin", "/admin/complaints/" + complaintId,
-            new Requests.Reply("RESOLVED", "已安排清洁", "PENDING"));
+            new FeedbackRequests.Reply("RESOLVED", "已安排清洁", "PENDING"));
         putAs("54-管理员-用过期状态再回复", "admin", "/admin/complaints/" + complaintId,
-            new Requests.Reply("PROCESSING", "重复处理", "PENDING"));
+            new FeedbackRequests.Reply("PROCESSING", "重复处理", "PENDING"));
         postAs("55-学生-撤回已解决投诉", "alice", "/complaints/" + complaintId + "/withdraw", Map.of());
         putAs("56-管理员-隐藏评价", "admin", "/admin/reviews/" + reviewId,
-            new Requests.Visibility(false));
+            new FeedbackRequests.Visibility(false));
         getAs("57-学生-公开评价列表", "alice", "/reviews");
         getAs("58-管理员-全部评价", "admin", "/admin/reviews");
 
@@ -299,28 +303,28 @@ class RouteSnapshotTest {
         getAs("60-管理员-自习室列表", "admin", "/admin/rooms");
         getAs("61-管理员-座位列表", "admin", "/admin/rooms/" + room + "/seats");
         postAs("62-管理员-新建自习室", "admin", "/admin/rooms",
-            new Requests.Room("第二阅览室", "图书馆", 3, "08:00", "22:00", "快照新建", true, false));
+            new ResourceRequests.Room("第二阅览室", "图书馆", 3, "08:00", "22:00", "快照新建", true, false));
         putAs("63-管理员-修改有有效预约的自习室", "admin", "/admin/rooms/" + room,
-            new Requests.Room("测试阅览室", "图书馆", 2, "07:00", "23:00", "改描述", true, false));
-        postAs("64-管理员-新建座位", "admin", "/admin/seats", new Requests.Seat(room, "05", true, true));
+            new ResourceRequests.Room("测试阅览室", "图书馆", 2, "07:00", "23:00", "改描述", true, false));
+        postAs("64-管理员-新建座位", "admin", "/admin/seats", new ResourceRequests.Seat(room, "05", true, true));
         deleteAs("65-管理员-删除有历史预约的座位", "admin", "/admin/seats/" + s1);
         getAs("66-管理员-统计", "admin", "/admin/stats");
         getAs("67-管理员-审计日志", "admin", "/admin/audits");
         getAs("68-管理员-搜索用户", "admin", "/admin/users?query=ali");
         postAs("69-管理员-新增学生", "admin", "/admin/users",
-            new Requests.UserCreate("carol", "Carol", "Password123!"));
+            new ResourceRequests.UserCreate("carol", "Carol", "Password123!"));
         putAs("70-管理员-修改学生", "admin", "/admin/users/" + bobId,
-            new Requests.UserUpdate("Bobby2", true));
+            new ResourceRequests.UserUpdate("Bobby2", true));
         putAs("71-管理员-停用自己", "admin", "/admin/users/" + adminId,
-            new Requests.UserUpdate("Admin", false));
+            new ResourceRequests.UserUpdate("Admin", false));
 
         // ---------- F 异常输入 ----------
         postAs("80-学生-取消不存在的预约", "alice", "/reservations/9999/cancel", Map.of());
         getAs("81-学生-非法状态筛选", "alice", "/reservations?status=FOO");
         postAs("82-学生-超出时长预约", "alice", "/reservations",
-            new Requests.Booking(s2, now.plusHours(20), now.plusHours(25)));
+            new BookingRequests.Booking(s2, now.plusHours(20), now.plusHours(25)));
         postAs("83-学生-过去时间预约", "alice", "/reservations",
-            new Requests.Booking(s2, now.minusHours(2), now.minusHours(1)));
+            new BookingRequests.Booking(s2, now.minusHours(2), now.minusHours(1)));
 
         report();
     }

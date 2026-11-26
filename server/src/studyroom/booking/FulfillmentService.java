@@ -4,7 +4,6 @@ import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.credit.CreditService;
 import studyroom.platform.IdentityService;
 import studyroom.platform.PolicyService;
@@ -86,7 +85,7 @@ public class FulfillmentService {
      * one violation.
      */
     @Transactional
-    public void manualViolation(Requests.Violation input) {
+    public void manualViolation(BookingRequests.Violation input) {
         db.lock();
         var admin = identity.admin();
         var b = reservations.byId(input.reservationId());

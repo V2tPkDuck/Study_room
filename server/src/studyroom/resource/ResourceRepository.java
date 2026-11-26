@@ -2,7 +2,6 @@ package studyroom.resource;
 
 import java.util.*;
 import org.springframework.stereotype.Repository;
-import studyroom.Requests;
 import studyroom.platform.Store;
 
 /**
@@ -47,13 +46,13 @@ public class ResourceRepository {
 
     // ---------- rooms ----------
 
-    long insertRoom(Requests.Room input) {
+    long insertRoom(ResourceRequests.Room input) {
         return db.insert("INSERT INTO rooms(name,building,floor_no,open_time,close_time,description,enabled,is_quiet) "
                 + "VALUES(?,?,?,?,?,?,?,?)", input.name().trim(), input.building().trim(), input.floorNo(),
                 input.openTime(), input.closeTime(), input.description(), input.enabled(), input.isQuiet());
     }
 
-    void updateRoom(long roomId, Requests.Room input) {
+    void updateRoom(long roomId, ResourceRequests.Room input) {
         db.update(
                 "UPDATE rooms SET name=?,building=?,floor_no=?,open_time=?,close_time=?,description=?,enabled=?,is_quiet=? "
                         + "WHERE id=?",
@@ -67,12 +66,12 @@ public class ResourceRepository {
 
     // ---------- seats ----------
 
-    long insertSeat(Requests.Seat input) {
+    long insertSeat(ResourceRequests.Seat input) {
         return db.insert("INSERT INTO seats(room_id,code,has_power,enabled) VALUES(?,?,?,?)",
                 input.roomId(), input.code().trim(), input.hasPower(), input.enabled());
     }
 
-    void updateSeat(long seatId, Requests.Seat input) {
+    void updateSeat(long seatId, ResourceRequests.Seat input) {
         db.update("UPDATE seats SET code=?,has_power=?,enabled=? WHERE id=?",
                 input.code().trim(), input.hasPower(), input.enabled(), seatId);
     }

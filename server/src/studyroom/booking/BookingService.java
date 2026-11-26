@@ -4,7 +4,6 @@ import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.credit.CreditService;
 import studyroom.platform.BusinessException;
 import studyroom.platform.IdentityService;
@@ -40,7 +39,7 @@ public class BookingService {
     }
 
     @Transactional
-    public Map<String, Object> create(Requests.Booking input) {
+    public Map<String, Object> create(BookingRequests.Booking input) {
         db.lock();
         var user = identity.current();
         var now = LocalDateTime.now(clock);

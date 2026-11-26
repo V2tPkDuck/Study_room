@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import studyroom.Requests;
 
 /**
  * Complaint and review endpoints.
@@ -33,7 +32,7 @@ public class FeedbackApi {
     /** FR-10: submit a complaint, optionally linked to one of the caller's reservations. */
     @PostMapping("/complaints")
     @ResponseStatus(HttpStatus.CREATED)
-    Map<String,Long> createComplaint(@Valid @RequestBody Requests.Complaint input) {
+    Map<String,Long> createComplaint(@Valid @RequestBody FeedbackRequests.Complaint input) {
         return Map.of("id", complaints.complain(input));
     }
 
@@ -53,7 +52,7 @@ public class FeedbackApi {
     /** FR-09: submit one review for a completed reservation. */
     @PostMapping("/reviews")
     @ResponseStatus(HttpStatus.CREATED)
-    Map<String,Long> createReview(@Valid @RequestBody Requests.Review input) {
+    Map<String,Long> createReview(@Valid @RequestBody FeedbackRequests.Review input) {
         return Map.of("id", reviews.review(input));
     }
 
@@ -65,7 +64,7 @@ public class FeedbackApi {
 
     /** FR-21/FR-22: reply with an expectedStatus guard against concurrent handling. */
     @PutMapping("/admin/complaints/{id}")
-    Map<String,String> replyComplaint(@PathVariable long id, @Valid @RequestBody Requests.Reply input) {
+    Map<String,String> replyComplaint(@PathVariable long id, @Valid @RequestBody FeedbackRequests.Reply input) {
         complaints.reply(id, input);
         return ok();
     }
@@ -78,7 +77,7 @@ public class FeedbackApi {
 
     /** FR-20: show or hide a review. */
     @PutMapping("/admin/reviews/{id}")
-    Map<String,String> moderateReview(@PathVariable long id, @RequestBody Requests.Visibility input) {
+    Map<String,String> moderateReview(@PathVariable long id, @RequestBody FeedbackRequests.Visibility input) {
         reviews.visibility(id, input.visible());
         return ok();
     }

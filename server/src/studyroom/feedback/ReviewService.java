@@ -4,7 +4,6 @@ import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.platform.IdentityService;
 import studyroom.platform.Store;
 import static studyroom.platform.BusinessException.require;
@@ -26,7 +25,7 @@ public class ReviewService {
     }
 
     @Transactional
-    public long review(Requests.Review input) {
+    public long review(FeedbackRequests.Review input) {
         var user = identity.current();
         var booking = db.one("SELECT * FROM reservations WHERE id=?", input.reservationId());
         require(id(booking, "user_id") == id(user, "id"), 403, "只能评价自己的预约");

@@ -4,7 +4,6 @@ import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import studyroom.Requests;
 import studyroom.platform.IdentityService;
 import studyroom.platform.Store;
 import static studyroom.platform.BusinessException.require;
@@ -31,7 +30,7 @@ public class ComplaintService {
     }
 
     @Transactional
-    public long complain(Requests.Complaint input) {
+    public long complain(FeedbackRequests.Complaint input) {
         var user = identity.current();
         if (input.reservationId() != null) {
             var booking = db.one("SELECT user_id FROM reservations WHERE id=?", input.reservationId());
@@ -62,7 +61,7 @@ public class ComplaintService {
      * handled it (409).
      */
     @Transactional
-    public void reply(long complaint, Requests.Reply input) {
+    public void reply(long complaint, FeedbackRequests.Reply input) {
         var admin = identity.admin();
         var c = feedback.complaint(complaint);
         require(input.expectedStatus().equals(c.get("status")), 409, "投诉状态已变化，请刷新后重试");
