@@ -21,10 +21,12 @@ public class IdentityService {
 
     private final Store db;
     private final Clock clock;
+    private final AuditService audit;
 
-    public IdentityService(Store db, Clock clock) {
+    public IdentityService(Store db, Clock clock, AuditService audit) {
         this.db = db;
         this.clock = clock;
+        this.audit = audit;
     }
 
     /** Returns the enabled account behind the current session, or throws 401/403. */
@@ -44,13 +46,38 @@ public class IdentityService {
         return user;
     }
 
-    /** Appends one audit row; actor is a username or the literal SYSTEM. */
+    /** Backwards-compatible entry point; the SQL lives in {@link AuditService}. */
     public void audit(String actor, String action, String type, Long id, String detail) {
-        db.update("INSERT INTO audit_logs(actor,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?)",
-            actor, action, type, id, detail, LocalDateTime.now(clock));
+        audit.audit(actor, action, type, id, detail);
     }
     
     public void setBlacklistUntil(long userId, LocalDateTime end) {
         db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", end, userId);
+    }
+
+    /**
+     * Read-only lookup used by the user-admin slice; keeps the original 404
+     * semantics.
+     */
+    public Map<String, Object> user(long userId) {
+        return db.one("SELECT " + PUBLIC_FIELDS + " FROM app_users WHERE id=?", userId);
+    }
+
+    public boolean usernameExists(String username) {
+        return db.count("SELECT COUNT(*) FROM app_users WHERE username=?", username) > 0;
+    }
+
+    /**
+     * FR-18: creates a student account; password hashing stays in the calling use
+     * case.
+     */
+    public long createStudent(String username, String displayName, String passwordHash, LocalDateTime now) {
+        return db.insert("INSERT INTO app_users(username,display_name,password_hash,role,enabled,created_at) "
+                + "VALUES(?,?,?,'STUDENT',TRUE,?)", username, displayName, passwordHash, now);
+    }
+
+    /** FR-18: rename or enable/disable an account. */
+    public void updateProfile(long userId, String displayName, boolean enabled) {
+        db.update("UPDATE app_users SET display_name=?,enabled=? WHERE id=?", displayName, enabled, userId);
     }
 }

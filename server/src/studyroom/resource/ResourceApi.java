@@ -7,8 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import studyroom.BookingService;
 import studyroom.Requests;
-import studyroom.ResourceService;
-
+import studyroom.resource.SeatAdminService;
+import studyroom.resource.UserAdminService;
+import studyroom.resource.StatsService;
 /**
  * Administrator resource endpoints.
  *
@@ -20,11 +21,18 @@ import studyroom.ResourceService;
 @RestController
 @RequestMapping("/api")
 public class ResourceApi {
-    private final ResourceService resources;
+    private final RoomService rooms;
+    private final SeatAdminService seats;
+    private final UserAdminService userAdmin;
+    private final StatsService stats;
     private final BookingService bookings;
 
-    public ResourceApi(ResourceService resources, BookingService bookings) {
-        this.resources = resources;
+    public ResourceApi(RoomService rooms, SeatAdminService seats, UserAdminService userAdmin,
+            StatsService stats, BookingService bookings) {
+        this.rooms = rooms;
+        this.seats = seats;
+        this.userAdmin = userAdmin;
+        this.stats = stats;
         this.bookings = bookings;
     }
 
@@ -46,20 +54,20 @@ public class ResourceApi {
     @PostMapping("/admin/rooms")
     @ResponseStatus(HttpStatus.CREATED)
     Map<String,Long> createRoom(@Valid @RequestBody Requests.Room input) {
-        return Map.of("id", resources.saveRoom(null, input));
+        return Map.of("id", rooms.saveRoom(null, input));
     }
 
     /** FR-12: update a room; blocked while it still has active reservations. */
     @PutMapping("/admin/rooms/{id}")
     Map<String,String> updateRoom(@PathVariable long id, @Valid @RequestBody Requests.Room input) {
-        resources.saveRoom(id, input);
+        rooms.saveRoom(id, input);
         return ok();
     }
 
     /** FR-12: delete a room only when it has no seats. */
     @DeleteMapping("/admin/rooms/{id}")
     Map<String,String> deleteRoom(@PathVariable long id) {
-        resources.delete("room", id);
+        rooms.delete(id);
         return ok();
     }
 
@@ -67,53 +75,47 @@ public class ResourceApi {
     @PostMapping("/admin/seats")
     @ResponseStatus(HttpStatus.CREATED)
     Map<String,Long> createSeat(@Valid @RequestBody Requests.Seat input) {
-        return Map.of("id", resources.saveSeat(null, input));
+        return Map.of("id", seats.saveSeat(null, input));
     }
 
     /** FR-13: update a seat; a seat cannot move to another room. */
     @PutMapping("/admin/seats/{id}")
     Map<String,String> updateSeat(@PathVariable long id, @Valid @RequestBody Requests.Seat input) {
-        resources.saveSeat(id, input);
+        seats.saveSeat(id, input);
         return ok();
     }
 
     /** FR-13: delete a seat only when it has no reservation history. */
     @DeleteMapping("/admin/seats/{id}")
     Map<String,String> deleteSeat(@PathVariable long id) {
-        resources.delete("seat", id);
+        seats.delete(id);
         return ok();
     }
 
     /** FR-18: search users by username or display name. */
     @GetMapping("/admin/users")
     List<Map<String,Object>> users(@RequestParam(required=false) String query) {
-        return resources.users(query);
+        return userAdmin.users(query);
     }
 
     /** FR-18: create a student account. */
     @PostMapping("/admin/users")
     @ResponseStatus(HttpStatus.CREATED)
     Map<String,Long> createUser(@Valid @RequestBody Requests.UserCreate input) {
-        return Map.of("id", resources.createUser(input));
+        return Map.of("id", userAdmin.createUser(input));
     }
 
     /** FR-18: rename or enable/disable an account. */
     @PutMapping("/admin/users/{id}")
     Map<String,String> updateUser(@PathVariable long id, @Valid @RequestBody Requests.UserUpdate input) {
-        resources.updateUser(id, input);
+        userAdmin.updateUser(id, input);
         return ok();
     }
     
     /** FR-23/24/25: counters and charts for the administrator dashboard. */
     @GetMapping("/admin/stats")
     Map<String,Object> statistics() {
-        return resources.stats();
-    }
-
-    /** QR-SEC-04: the latest audit rows. */
-    @GetMapping("/admin/audits")
-    List<Map<String,Object>> auditLogs() {
-        return resources.audits();
+        return stats.stats();
     }
 
     private Map<String,String> ok() {
