@@ -206,6 +206,8 @@ function showLogin() {
       state.page = 1;
       state.status = '';
       state.date = '';
+      state.start = '';
+      state.end = '';
       shell();
       await navigate('dashboard');
     } catch (error) {
@@ -591,7 +593,8 @@ function defaultRange() {
 
 // FR-01/02/03/14：自习室、座位状态、预约入口、实时刷新。
 async function seatPage() {
-  defaultRange();
+  // 从“我的预约”跳转时会带入该预约的时段；只有没有时段时才用默认的“现在起 1 小时”。
+  if (!state.start || !state.end) defaultRange();
   const rooms = await api(prefix() + '/rooms');
   if (state.view !== 'seats') return;
   state.roomData = rooms;
@@ -657,7 +660,10 @@ async function loadSeats() {
     <div class="seat-layout">
       <section class="panel">
         <div class="panel-head">
-          <h2>${escapeHtml(room.name)}</h2>
+          <div>
+            <h2>${escapeHtml(room.name)}</h2>
+            <p class="muted small window-hint">当前时段：${stamp(state.start)} — ${stamp(state.end)}，座位状态按此时段计算</p>
+          </div>
           <span class="muted small">${matches.length} 个符合条件 · 座位位置保持不变</span>
         </div>
         ${matches.length === 0 ? '<p class="notice">没有符合当前筛选条件的座位，请调整“有电源/安静区”。</p>' : ''}
@@ -723,6 +729,11 @@ function bookingTable(rows, adminView) {
         }
         if (row.status === 'CHECKED_IN') actions.push(button('签退', 'check-out', row.id));
         if (row.status === 'COMPLETED') actions.push(button('评价', 'review', row.id));
+        if (['BOOKED', 'CHECKED_IN'].includes(row.status)) {
+          actions.push(`<button type="button" class="button compact" data-action="view-seat"
+            data-room="${escapeHtml(row.room_id)}" data-start="${escapeHtml(String(row.start_at).slice(0, 16))}"
+            data-end="${escapeHtml(String(row.end_at).slice(0, 16))}">查看座位</button>`);
+        }
         actions.push(button('反馈', 'complaint', row.id));
       }
       return `<tr>
@@ -1199,6 +1210,15 @@ document.addEventListener('click', async event => {
         await navigate(state.view);
         break;
       case 'go-seats':
+        await navigate('seats');
+        break;
+      case 'view-seat':
+        // 以该预约的时段和自习室为准，窗口对齐后座位才会显示“已预约”。
+        state.roomId = Number(trigger.dataset.room);
+        state.start = trigger.dataset.start;
+        state.end = trigger.dataset.end;
+        state.quiet = false;
+        state.selected = null;
         await navigate('seats');
         break;
       case 'go-bookings':
