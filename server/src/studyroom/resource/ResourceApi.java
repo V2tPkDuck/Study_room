@@ -103,26 +103,7 @@ public class ResourceApi {
         resources.updateUser(id, input);
         return ok();
     }
-
-    /** FR-19: add a blacklist record with its own reason and end date. */
-    @PostMapping("/admin/users/{id}/blacklist")
-    Map<String,Long> addBlacklist(@PathVariable long id, @Valid @RequestBody Requests.Blacklist input) {
-        return Map.of("id", resources.blacklist(id, input));
-    }
-
-    /** FR-19: release every active blacklist record of one student. */
-    @PostMapping("/admin/users/{id}/blacklist/release")
-    Map<String,String> releaseBlacklist(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
-        resources.releaseBlacklist(id, input.reason());
-        return ok();
-    }
-
-    /** FR-19: blacklist history of one student. */
-    @GetMapping("/admin/users/{id}/blacklist")
-    List<Map<String,Object>> blacklistHistory(@PathVariable long id) {
-        return resources.blacklistRecords(id);
-    }
-
+    
     /** FR-23/24/25: counters and charts for the administrator dashboard. */
     @GetMapping("/admin/stats")
     Map<String,Object> statistics() {

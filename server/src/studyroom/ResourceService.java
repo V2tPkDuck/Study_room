@@ -125,48 +125,7 @@ public class ResourceService {
         identity.audit((String)admin.get("username"), "UPDATE_USER", "USER", userId,
             "修改资料/启停账号：" + input.enabled());
     }
-
-    /** FR-19: administrator adds a blacklist record with its own reason and date range. */
-    @Transactional
-    public long blacklist(long userId, Requests.Blacklist input) {
-        db.lock();
-        var admin = identity.admin();
-        db.one("SELECT id FROM app_users WHERE id=?", userId);
-        var now = LocalDateTime.now(clock);
-        var end = now.plusDays(input.days());
-        long record = db.insert("INSERT INTO blacklist_records(user_id,reason,start_at,end_at,created_by,active) "
-            + "VALUES(?,?,?,?,?,TRUE)", userId, input.reason(), now, end, admin.get("username"));
-        var user = db.one("SELECT blacklist_until FROM app_users WHERE id=?", userId);
-        var current = time(user, "blacklist_until");
-        if (current == null || current.isBefore(end)) {
-            db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", end, userId);
-        }
-        identity.audit((String)admin.get("username"), "BLACKLIST", "BLACKLIST", record, input.reason());
-        return record;
-    }
-
-    /** Releases every active blacklist record and recomputes the deadline on the account. */
-    @Transactional
-    public void releaseBlacklist(long userId, String reason) {
-        db.lock();
-        var admin = identity.admin();
-        db.one("SELECT id FROM app_users WHERE id=?", userId);
-        long active = db.count("SELECT COUNT(*) FROM blacklist_records WHERE user_id=? AND active=TRUE", userId);
-        require(active > 0, 409, "该学生当前没有有效黑名单");
-        var now = LocalDateTime.now(clock);
-        db.update("UPDATE blacklist_records SET active=FALSE,released_at=?,released_by=?,release_reason=? "
-            + "WHERE user_id=? AND active=TRUE", now, admin.get("username"), reason, userId);
-        var row = db.one("SELECT MAX(end_at) AS max_end FROM blacklist_records "
-            + "WHERE user_id=? AND active=TRUE AND end_at>?", userId, now);
-        db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", row.get("max_end"), userId);
-        identity.audit((String)admin.get("username"), "RELEASE_BLACKLIST", "BLACKLIST", userId, reason);
-    }
-
-    public List<Map<String,Object>> blacklistRecords(long userId) {
-        identity.admin();
-        return db.list("SELECT * FROM blacklist_records WHERE user_id=? ORDER BY id DESC LIMIT 200", userId);
-    }
-
+    
     public List<Map<String,Object>> audits() {
         identity.admin();
         return db.list("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 500");

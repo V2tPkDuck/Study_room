@@ -49,4 +49,8 @@ public class IdentityService {
         db.update("INSERT INTO audit_logs(actor,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?)",
             actor, action, type, id, detail, LocalDateTime.now(clock));
     }
+    
+    public void setBlacklistUntil(long userId, LocalDateTime end) {
+        db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", end, userId);
+    }
 }

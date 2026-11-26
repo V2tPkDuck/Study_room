@@ -68,12 +68,6 @@ public class BookingApi {
         return ok();
     }
 
-    /** FR-08: the caller's own violation records. */
-    @GetMapping("/violations")
-    List<Map<String,Object>> myViolations() {
-        return bookings.violations(false);
-    }
-
     /** FR-15/FR-16: every reservation for the administrator console. */
     @GetMapping("/admin/reservations")
     Map<String,Object> adminReservations(@RequestParam(required=false) String status,
@@ -101,19 +95,6 @@ public class BookingApi {
     @PostMapping("/admin/violations")
     Map<String,String> registerViolation(@Valid @RequestBody Requests.Violation input) {
         bookings.manualViolation(input);
-        return ok();
-    }
-
-    /** FR-17: every violation record. */
-    @GetMapping("/admin/violations")
-    List<Map<String,Object>> adminViolations() {
-        return bookings.violations(true);
-    }
-
-    /** FR-17: revoke a violation record. */
-    @PostMapping("/admin/violations/{id}/revoke")
-    Map<String,String> revokeViolation(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
-        bookings.revokeViolation(id, input.reason());
         return ok();
     }
 

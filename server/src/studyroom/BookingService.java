@@ -9,6 +9,7 @@ import studyroom.platform.IdentityService;
 import studyroom.platform.Store;
 import static studyroom.platform.BusinessException.require;
 import static studyroom.platform.Store.*;
+import studyroom.credit.CreditService;
 
 /**
  * Reservation lifecycle: create, list, cancel, check-in and check-out.
@@ -25,7 +26,7 @@ public class BookingService {
     private final Store db;
     private final IdentityService identity;
     private final Clock clock;
-
+    private final CreditService credit;
     /** Only BOOKED and CHECKED_IN hold a seat slot; PENDING has already released it. */
     private static final String ACTIVE = "('BOOKED','CHECKED_IN')";
 
@@ -36,10 +37,11 @@ public class BookingService {
     private static final Set<String> STATUSES = Set.of(
         "BOOKED", "PENDING", "CHECKED_IN", "COMPLETED", "CANCELLED", "VIOLATED");
 
-    public BookingService(Store db, IdentityService identity, Clock clock) {
+    public BookingService(Store db, IdentityService identity, Clock clock, CreditService credit) {
         this.db = db;
         this.identity = identity;
         this.clock = clock;
+        this.credit = credit;
     }
 
     public Map<String,Object> policy() {
@@ -100,7 +102,8 @@ public class BookingService {
         var now = LocalDateTime.now(clock);
         var policy = rawPolicy();
 
-        var black = time(user, "blacklist_until");
+        // var black = time(user, "blacklist_until");
+        var black = credit.blacklistUntil(id(user, "id"));
         require(black == null || !black.isAfter(now), 403, "账号处于黑名单限制期，截止 " + black);
 
         var seat = db.one("SELECT s.*,r.enabled AS room_enabled,r.open_time,r.close_time "
@@ -245,7 +248,7 @@ public class BookingService {
 
         if (violation) {
             db.update("UPDATE reservations SET status='VIOLATED',remark=? WHERE id=?", reason, booking);
-            recordViolation(b, "AUTO", reason, (String)admin.get("username"));
+            credit.record(id(b, "user_id"), booking, "AUTO", reason, (String) admin.get("username"));
             identity.audit((String)admin.get("username"), "CONFIRM_NO_CHECK_IN", "RESERVATION", booking, reason);
         } else {
             db.update("UPDATE reservations SET status='CANCELLED',remark=? WHERE id=?", reason, booking);
@@ -261,12 +264,12 @@ public class BookingService {
         var b = db.one("SELECT * FROM reservations WHERE id=?", input.reservationId());
         require(Set.of("BOOKED", "CHECKED_IN", "PENDING").contains(b.get("status")),
             409, "只有未结束的预约可以登记违约");
-        require(db.count("SELECT COUNT(*) FROM violations WHERE reservation_id=?", input.reservationId()) == 0,
-            409, "该预约已有违约记录");
+        require(!credit.hasViolation(input.reservationId()), 409, "该预约已有违约记录");
 
         db.update("UPDATE reservations SET status='VIOLATED',check_out_at=?,remark=? WHERE id=?",
             LocalDateTime.now(clock), input.reason(), input.reservationId());
-        recordViolation(b, "MANUAL", input.reason(), (String)admin.get("username"));
+        credit.record(id(b, "user_id"), input.reservationId(), "MANUAL", input.reason(),
+            (String) admin.get("username"));
         identity.audit((String)admin.get("username"), "MANUAL_VIOLATION", "RESERVATION",
             input.reservationId(), input.reason());
     }
@@ -276,53 +279,4 @@ public class BookingService {
      * student is blacklisted automatically. An existing active blacklist is reused,
      * so repeated sweeps or retries do not extend the end date.
      */
-    private void recordViolation(Map<String,Object> b, String source, String reason, String actor) {
-        var now = LocalDateTime.now(clock);
-        long violation = db.insert("INSERT INTO violations(user_id,reservation_id,source,reason,revoked,created_by,created_at) "
-            + "VALUES(?,?,?,?,FALSE,?,?)", b.get("user_id"), b.get("id"), source, reason, actor, now);
-        identity.audit(actor, "VIOLATION", "VIOLATION", violation, reason);
-
-        var policy = rawPolicy();
-        long count = db.count("SELECT COUNT(*) FROM violations WHERE user_id=? AND revoked=FALSE", b.get("user_id"));
-        if (count >= id(policy, "blacklist_threshold")) {
-            applyBlacklist(b.get("user_id"), "有效违约达到 " + count + " 次",
-                (int)id(policy, "blacklist_days"), "SYSTEM");
-        }
-    }
-
-    /** Automatic blacklist: reuse an active record; administrator-issued ones go through ResourceService. */
-    private void applyBlacklist(Object userId, String reason, int days, String actor) {
-        var now = LocalDateTime.now(clock);
-        long active = db.count("SELECT COUNT(*) FROM blacklist_records WHERE user_id=? AND active=TRUE AND end_at>?",
-            userId, now);
-        if (active > 0) return;
-
-        var end = now.plusDays(days);
-        long record = db.insert("INSERT INTO blacklist_records(user_id,reason,start_at,end_at,created_by,active) "
-            + "VALUES(?,?,?,?,?,TRUE)", userId, reason, now, end, actor);
-        var user = db.one("SELECT blacklist_until FROM app_users WHERE id=?", userId);
-        var current = time(user, "blacklist_until");
-        if (current == null || current.isBefore(end)) {
-            db.update("UPDATE app_users SET blacklist_until=? WHERE id=?", end, userId);
-        }
-        identity.audit(actor, "BLACKLIST", "BLACKLIST", record, reason);
-    }
-
-    @Transactional
-    public void revokeViolation(long violation, String reason) {
-        db.lock();
-        var admin = identity.admin();
-        var v = db.one("SELECT * FROM violations WHERE id=?", violation);
-        require(!flag(v, "revoked"), 409, "记录已撤销");
-        db.update("UPDATE violations SET revoked=TRUE,revoke_reason=? WHERE id=?", reason, violation);
-        identity.audit((String)admin.get("username"), "REVOKE_VIOLATION", "VIOLATION", violation, reason);
-    }
-
-    public List<Map<String,Object>> violations(boolean admin) {
-        var user = admin ? identity.admin() : identity.current();
-        return db.list("SELECT v.*,u.username,u.display_name FROM violations v "
-            + "JOIN app_users u ON v.user_id=u.id "
-            + (admin ? "" : "WHERE v.user_id=? ")
-            + "ORDER BY v.id DESC LIMIT 500", admin ? new Object[]{} : new Object[]{user.get("id")});
-    }
 }
