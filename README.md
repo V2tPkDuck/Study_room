@@ -36,6 +36,7 @@ java -jar app\study-room.jar
 
 > **运行只需要 JDK 17+，不需要 Maven、MySQL、Node.js 或 Docker。**
 > `app/study-room.jar` 已经是打包好的可执行程序，不需要自己编译。
+> 仓库不提交这个 jar（见 `.gitignore`）：请从交付压缩包取得 `app/` 目录，或先 `cd server` → `mvn -B -ntp -DskipTests package`，再把 `target/study-room.jar` 复制到 `app/`。
 ### 2. 环境清单
 
 | 项目    | 要求                                              | 说明                                     |
@@ -64,30 +65,31 @@ java -jar app\study-room.jar
 
 ```text
 study-room/
-├── 启动系统.cmd                    # 双击启动（不需要 Maven）
-├── app/
-│   └── study-room.jar              # 打包好的可执行程序
+├── 启动系统.cmd                    # 双击启动（要求 app/ 下已有 jar）
+├── app/                            # 交付包内的运行目录，仓库不提交（见 .gitignore）
+│   └── study-room.jar              # mvn package 产物复制到此
 ├── server/                         # 源码与构建配置
 │   ├── pom.xml
-│   ├── src/studyroom/              # 14 个 Java 类（短包名 studyroom）
+│   ├── src/studyroom/              # 35 个 Java 类，5 个域包
 │   │   ├── StudyRoomApplication.java
-│   │   ├── ApiController.java
-│   │   ├── BookingService.java
-│   │   └── ...
-│   ├── resources/
-│   │   ├── application.yml
-│   │   ├── schema.sql
-│   │   └── static/                 # index.html / app.js / styles.css
-│   └── test/studyroom/             # 集成测试
-├── docs/
-│   ├── 系统说明.md
-│   └── 核对清单.md
-├── README.md
-└── 修改清单.md
+│   │   ├── platform/               # 安全、身份、审计、参数、数据访问
+│   │   ├── booking/                # 预约与履约
+│   │   ├── credit/                 # 违约与黑名单
+│   │   ├── feedback/               # 投诉与评价
+│   │   └── resource/               # 资源、用户、统计
+│   ├── resources/                  # application.yml / schema.sql / static/
+│   └── test/studyroom/             # 集成测试与 62 份快照
+├── 系统说明.md
+├── 核对清单.md
+├── 团队分工与阶段计划_草案.md
+├── 架构决策记录_草案.md
+├── 架构设计后确认与分阶段实现操作指引_学生版.md
+├── CONTRIBUTING.md
+└── README.md
 ```
 
-- 没有多层 `edu/campus/study` 空包路径；源码在 `server/src/studyroom/`。
-- `server/` 是“源码工程”，`app/` 是“可直接运行的程序”，`docs/` 是交付文档，符合常见商业项目的分层。
+- 源码按域分包在 `server/src/studyroom/{platform,booking,credit,feedback,resource}`，包名为短名 `studyroom`，没有多层 `edu/campus/study` 前缀。
+- `server/` 是“源码工程”，`app/` 是“可直接运行的程序”（jar 由构建产出，不入库）；系统说明与核对清单直接放在仓库根目录，不在 `docs/` 下。
 ### 5. 数据与重置
 
 首次启动会在项目根目录创建 `data/studyroom-demo.mv.db`，并初始化 3 个自习室、72 个座位和演示账号。
@@ -163,18 +165,27 @@ because it is not an FR in the requirements report.
 
 ```text
 study-room/
-├── 启动系统.cmd                    # Double-click launcher (no Maven)
-├── app/study-room.jar              # Prebuilt runnable jar
+├── 启动系统.cmd                    # Double-click launcher (requires app/ jar)
+├── app/                            # Delivery-only folder, not committed (.gitignore)
+│   └── study-room.jar              # Copy the mvn package output here
 ├── server/
 │   ├── pom.xml
-│   ├── src/studyroom/              # 14 Java classes, short package name
+│   ├── src/studyroom/              # 35 Java classes in 5 domain packages
+│   │   ├── StudyRoomApplication.java
+│   │   ├── platform/               # security, identity, audit, policy, store
+│   │   ├── booking/                # reservations and fulfilment
+│   │   ├── credit/                 # violations and blacklist
+│   │   ├── feedback/               # complaints and reviews
+│   │   └── resource/               # rooms, seats, users, stats
 │   ├── resources/                  # application.yml, schema.sql, static/
-│   └── test/studyroom/             # integration tests
-├── docs/
-│   ├── 系统说明.md
-│   └── 核对清单.md
-├── README.md
-└── 修改清单.md
+│   └── test/studyroom/             # integration tests and 62 snapshots
+├── 系统说明.md
+├── 核对清单.md
+├── 团队分工与阶段计划_草案.md
+├── 架构决策记录_草案.md
+├── 架构设计后确认与分阶段实现操作指引_学生版.md
+├── CONTRIBUTING.md
+└── README.md
 ```
 
 ### 5. Rebuild from source (optional, needs Maven)
