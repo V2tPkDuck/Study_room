@@ -1,6 +1,5 @@
 package studyroom.platform;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Map;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,12 +19,10 @@ public class IdentityService {
     public static final String PUBLIC_FIELDS = "id,username,display_name,role,enabled,blacklist_until,created_at";
 
     private final Store db;
-    private final Clock clock;
     private final AuditService audit;
 
-    public IdentityService(Store db, Clock clock, AuditService audit) {
+    public IdentityService(Store db, AuditService audit) {
         this.db = db;
-        this.clock = clock;
         this.audit = audit;
     }
 
