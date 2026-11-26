@@ -5,14 +5,15 @@ import java.time.LocalDateTime;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import studyroom.BookingService;
+
 import studyroom.Requests;
+import studyroom.booking.SeatQueryService;
 /**
  * Administrator resource endpoints.
  *
  * <p>Responsibilities: room and seat maintenance, user administration, blacklist
  * actions, statistics and audit queries. The room/seat state shown in the console
- * is read through {@link BookingService} so the "occupied / booked / free" rule has
+ * is read through {@link SeatQueryService} so the "occupied / booked / free" rule has
  * exactly one implementation.
  */
 @RestController
@@ -22,21 +23,21 @@ public class ResourceApi {
     private final SeatAdminService seats;
     private final UserAdminService userAdmin;
     private final StatsService stats;
-    private final BookingService bookings;
+    private final SeatQueryService seatQuery;
 
     public ResourceApi(RoomService rooms, SeatAdminService seats, UserAdminService userAdmin,
-            StatsService stats, BookingService bookings) {
+            StatsService stats, SeatQueryService seatQuery) {
         this.rooms = rooms;
         this.seats = seats;
         this.userAdmin = userAdmin;
         this.stats = stats;
-        this.bookings = bookings;
+        this.seatQuery = seatQuery;
     }
 
     /** FR-12: every room, including disabled ones, for the maintenance table. */
     @GetMapping("/admin/rooms")
     List<Map<String,Object>> rooms() {
-        return bookings.rooms(true);
+        return seatQuery.rooms(true);
     }
 
     /** FR-13/FR-14: seats of a room with live state, including maintenance seats. */
@@ -44,7 +45,7 @@ public class ResourceApi {
     List<Map<String,Object>> seats(@PathVariable long room,
                                    @RequestParam(required=false) LocalDateTime start,
                                    @RequestParam(required=false) LocalDateTime end) {
-        return bookings.seats(room, start, end, true);
+        return seatQuery.seats(room, start, end, true);
     }
 
     /** FR-12: create a room. */

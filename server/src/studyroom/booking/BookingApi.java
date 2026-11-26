@@ -5,7 +5,7 @@ import java.time.*;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import studyroom.BookingService;
+
 import studyroom.Requests;
 
 /**
@@ -19,22 +19,26 @@ import studyroom.Requests;
 @RestController
 @RequestMapping("/api")
 public class BookingApi {
+    private final SeatQueryService seatQuery;
     private final BookingService bookings;
+    private final FulfillmentService fulfillment;
 
-    public BookingApi(BookingService bookings) {
+    public BookingApi(SeatQueryService seatQuery, BookingService bookings, FulfillmentService fulfillment) {
+        this.seatQuery = seatQuery;
         this.bookings = bookings;
+        this.fulfillment = fulfillment;
     }
 
     /** Returns the current booking policy values (read-only for the client). */
     @GetMapping("/policy")
     Map<String,Object> policy() {
-        return bookings.policy();
+        return seatQuery.policy();
     }
 
     /** FR-01: enabled rooms shown in the student seat picker. */
     @GetMapping("/rooms")
     List<Map<String,Object>> rooms() {
-        return bookings.rooms(false);
+        return seatQuery.rooms(false);
     }
 
     /** FR-02/FR-14: seats of one room with their live state for the requested window. */
@@ -42,7 +46,7 @@ public class BookingApi {
     List<Map<String,Object>> seats(@PathVariable long room,
                                    @RequestParam(required=false) LocalDateTime start,
                                    @RequestParam(required=false) LocalDateTime end) {
-        return bookings.seats(room, start, end, false);
+        return seatQuery.seats(room, start, end, false);
     }
 
     /** FR-07: the caller's reservations, filtered by status/date and paged. */
@@ -80,28 +84,28 @@ public class BookingApi {
     /** FR-16: confirm that a PENDING reservation is a violation. */
     @PostMapping("/admin/reservations/{id}/confirm-violation")
     Map<String,String> confirmViolation(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
-        bookings.resolvePending(id, true, input.reason());
+        fulfillment.resolvePending(id, true, input.reason());
         return ok();
     }
 
     /** FR-16: dismiss a PENDING review and release the reservation. */
     @PostMapping("/admin/reservations/{id}/dismiss-pending")
     Map<String,String> dismissPending(@PathVariable long id, @Valid @RequestBody Requests.Reason input) {
-        bookings.resolvePending(id, false, input.reason());
+        fulfillment.resolvePending(id, false, input.reason());
         return ok();
     }
 
     /** FR-17: administrator registers a violation manually. */
     @PostMapping("/admin/violations")
     Map<String,String> registerViolation(@Valid @RequestBody Requests.Violation input) {
-        bookings.manualViolation(input);
+        fulfillment.manualViolation(input);
         return ok();
     }
 
     /** FR-16: run the fulfilment sweep on demand instead of waiting for the scheduler. */
     @PostMapping("/admin/sweep")
     Map<String,Integer> sweep() {
-        return Map.of("processed", bookings.sweep());
+        return Map.of("processed", fulfillment.sweep());
     }
 
     private Map<String,String> ok() {

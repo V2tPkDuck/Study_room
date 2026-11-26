@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.*;
+import studyroom.booking.FulfillmentService;
 import studyroom.platform.Store;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -35,7 +36,7 @@ class WorkflowIntegrationTest {
     @Autowired ObjectMapper json;
     @Autowired Store db;
     @Autowired PasswordEncoder passwords;
-    @Autowired BookingService bookings;
+    @Autowired FulfillmentService fulfillment;
     @Autowired MutableClock clock;
 
     long alice, bob, room, s1, s2, s3, s4;
@@ -196,10 +197,10 @@ class WorkflowIntegrationTest {
         long id = book("alice", s1, now.plusHours(1), now.plusHours(2));
         clock.set(now.plusMinutes(75)); // 10:15，已超过 10:00 + 15 分钟宽限
 
-        assertThat(bookings.sweep()).isEqualTo(1);
+        assertThat(fulfillment.sweep()).isEqualTo(1);
         assertThat(db.one("SELECT status FROM reservations WHERE id=?", id).get("status")).isEqualTo("PENDING");
         assertThat(db.count("SELECT COUNT(*) FROM violations WHERE reservation_id=?", id)).isZero();
-        assertThat(bookings.sweep()).isZero();
+        assertThat(fulfillment.sweep()).isZero();
 
         postAs("/admin/reservations/" + id + "/confirm-violation",
             new Requests.Reason("管理员确认未签到"), "admin").andExpect(status().isOk());
