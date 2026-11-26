@@ -7,9 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import studyroom.BookingService;
 import studyroom.Requests;
-import studyroom.resource.SeatAdminService;
-import studyroom.resource.UserAdminService;
-import studyroom.resource.StatsService;
 /**
  * Administrator resource endpoints.
  *
