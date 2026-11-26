@@ -145,6 +145,7 @@ p { line-height: 1.7; }
 }
 .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
 .panel-head h2 { margin: 0; }
+.window-hint { margin: 4px 0 0; }
 .stack { display: grid; gap: 14px; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
@@ -247,8 +248,8 @@ tr:last-child td { border-bottom: 0; }
 .seat.selected { outline: 2px solid var(--primary); }
 .seat.booked { background: #e6eef7; border-color: #8faec8; color: #365a78; }
 .seat.booked small { color: #4e6b84; }
-.seat.inuse { background: #fff0cf; border-color: #d9a441; color: #7a4a00; }
-.seat.inuse small { color: #8a5d15; }
+.seat.inuse { background: #ffe08a; border-color: #d9a441; color: #6b4a00; }
+.seat.inuse small { color: #7a5200; }
 .seat.disabled { background: #f7e3e0; border-color: #c98a82; color: #8c3a30; }
 .seat.disabled small { color: #93544c; }
 .seat:disabled { cursor: not-allowed; opacity: 1; }
@@ -256,7 +257,7 @@ tr:last-child td { border-bottom: 0; }
 .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border: 1px solid #bbb; vertical-align: -1px; }
 .legend .free { background: #e0f2e4; border-color: #7fb88e; }
 .legend .booked { background: #e6eef7; border-color: #8faec8; }
-.legend .inuse { background: #fff0cf; border-color: #d9a441; }
+.legend .inuse { background: #ffe08a; border-color: #d9a441; }
 .legend .disabled { background: #f7e3e0; border-color: #c98a82; }
 .booking-aside { align-self: start; }
 .detail { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid #eef1f3; font-size: 13px; }
